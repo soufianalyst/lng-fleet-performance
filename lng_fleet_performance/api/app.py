@@ -142,12 +142,12 @@ async def dashboard():
            WHERE c.assessment_year = 2025
            ORDER BY c.cii_calculated""")
     cert_alerts = db.fetchall(
-        """SELECT * FROM certificates WHERE status='active'
-           AND date(expiry_date) <= date('now', '+90 days')""")
+        """SELECT * FROM certificates WHERE status='valid'
+           AND (expiry_date::date) <= (CURRENT_DATE + INTERVAL '90 days')""")
     eca_active = db.fetchall("SELECT * FROM eca_zones WHERE status='active'")
     pending_alerts = db.fetchall(
         """SELECT * FROM predictive_alerts WHERE acknowledged=0 AND resolved=0
-           ORDER BY created_at DESC LIMIT 20""")
+           ORDER BY alert_timestamp DESC LIMIT 20""")
     return {
         "fleet_size": len(vessels),
         "active_vessels": sum(1 for v in vessels if v["vessel_type"] == "LNG Carrier"),
