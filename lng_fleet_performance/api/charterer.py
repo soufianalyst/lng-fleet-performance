@@ -704,7 +704,7 @@ async def utilization():
             SELECT td.*, vr.name
             FROM telemetry_daily td
             JOIN vessel_registry vr ON td.vessel_id = vr.vessel_id
-            WHERE td.day >= date((SELECT MAX(day) FROM telemetry_daily), '-30 days')
+            WHERE CAST(td.day AS DATE) >= date((SELECT MAX(day) FROM telemetry_daily), '-30 days')
             ORDER BY td.vessel_id, td.day
         """)
 
