@@ -13,16 +13,26 @@ class DatabaseManager:
         self._initialize()
 
     def _initialize(self):
-        with self.get_connection() as conn:
-            conn.execute("PRAGMA journal_mode=WAL")
-            conn.execute("PRAGMA foreign_keys=ON")
-            conn.execute("PRAGMA busy_timeout=5000")
+        import time
+        for attempt in range(5):
+            try:
+                with self.get_connection() as conn:
+                    conn.execute("PRAGMA journal_mode=WAL")
+                    conn.execute("PRAGMA foreign_keys=ON")
+                    conn.execute("PRAGMA busy_timeout=10000")
+                return
+            except sqlite3.OperationalError:
+                if attempt < 4:
+                    time.sleep(0.5 * (attempt + 1))
+                else:
+                    raise
 
     @contextmanager
     def get_connection(self):
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path, timeout=15)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys=ON")
+        conn.execute("PRAGMA busy_timeout=10000")
         try:
             yield conn
             conn.commit()

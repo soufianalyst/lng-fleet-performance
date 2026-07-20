@@ -1,0 +1,1573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LNG Fleet Performance Management System</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh}
+:root{--bg:#0f172a;--card:#1e293b;--border:#334155;--primary:#3b82f6;--success:#22c55e;--warning:#eab308;--danger:#ef4444;--text:#e2e8f0;--muted:#94a3b8}
+.app{display:flex;min-height:100vh}
+.sidebar{width:260px;background:var(--card);border-right:1px solid var(--border);padding:16px 0;flex-shrink:0;position:fixed;height:100vh;overflow-y:auto}
+.sidebar h2{padding:0 20px 16px;font-size:16px;font-weight:700;color:var(--primary);border-bottom:1px solid var(--border);margin-bottom:8px}
+.sidebar .logo{font-size:13px;color:var(--muted);padding:0 20px 12px;border-bottom:1px solid var(--border);margin-bottom:8px}
+.nav-group{padding:8px 12px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:600}
+.nav-item{display:block;padding:8px 20px;color:var(--muted);text-decoration:none;font-size:13px;cursor:pointer;transition:all .15s}
+.nav-item:hover{background:rgba(59,130,246,0.1);color:var(--text)}
+.nav-item.active{background:rgba(59,130,246,0.15);color:var(--primary);border-right:3px solid var(--primary);font-weight:500}
+.main{margin-left:260px;flex:1;padding:24px;min-height:100vh}
+.page-header{margin-bottom:24px}
+.page-header h1{font-size:24px;font-weight:700;margin-bottom:4px}
+.page-header p{color:var(--muted);font-size:14px}
+.cards{display:grid;gap:16px;margin-bottom:24px}
+.cards-2{grid-template-columns:repeat(2,1fr)}
+.cards-3{grid-template-columns:repeat(3,1fr)}
+.cards-4{grid-template-columns:repeat(4,1fr)}
+.cards-5{grid-template-columns:repeat(5,1fr)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px}
+.card h3{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.card .value{font-size:28px;font-weight:700}
+.card .sub{font-size:12px;color:var(--muted);margin-top:4px}
+.badge{display:inline-block;padding:2px 8px;border-radius:9999px;font-size:11px;font-weight:600}
+.badge-success{background:rgba(34,197,94,0.15);color:#22c55e}
+.badge-warning{background:rgba(234,179,8,0.15);color:#eab308}
+.badge-danger{background:rgba(239,68,68,0.15);color:#ef4444}
+.badge-info{background:rgba(59,130,246,0.15);color:#3b82f6}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;padding:10px 12px;font-size:12px;color:var(--muted);border-bottom:1px solid var(--border);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+td{padding:10px 12px;font-size:13px;border-bottom:1px solid var(--border)}
+tr:hover{background:rgba(59,130,246,0.04)}
+.chart-container{position:relative;height:300px;margin:16px 0}
+.loading{text-align:center;padding:40px;color:var(--muted)}
+.btn{padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);cursor:pointer;font-size:13px;font-family:inherit;transition:all .15s}
+.btn:hover{border-color:var(--primary);color:var(--primary)}
+.btn-primary{background:var(--primary);color:#fff;border-color:var(--primary)}
+.btn-primary:hover{background:#2563eb}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.gauge{text-align:center;padding:16px}
+.gauge-value{font-size:36px;font-weight:700}
+.gauge-label{font-size:12px;color:var(--muted);margin-top:4px}
+.status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
+.dot-green{background:var(--success)}
+.dot-yellow{background:var(--warning)}
+.dot-red{background:var(--danger)}
+#fleet-map-container{height:500px;border-radius:12px;overflow:hidden;border:1px solid var(--border);margin-bottom:16px;background:#0c1220}
+.map-legend{display:flex;gap:16px;padding:12px 16px;background:var(--card);border:1px solid var(--border);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--muted);flex-wrap:wrap;align-items:center}
+.map-legend .legend-item{display:flex;align-items:center;gap:6px}
+.map-legend .legend-line{width:24px;height:3px;border-radius:2px}
+.leaflet-popup-content-wrapper{background:var(--card)!important;color:var(--text)!important;border:1px solid var(--border)!important;border-radius:8px!important}
+.leaflet-popup-tip{background:var(--card)!important}
+.leaflet-popup-content{margin:12px 16px!important;font-family:'Inter',sans-serif;font-size:13px}
+.leaflet-popup-content h4{margin:0 0 8px;font-size:14px;font-weight:600;color:var(--primary)}
+.leaflet-popup-content p{margin:3px 0;font-size:12px;color:var(--muted)}
+.leaflet-popup-content .label{color:var(--text);font-weight:500}
+.progress-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-top:6px}
+.progress-fill{height:100%;border-radius:2px;transition:width .3s}
+.kpi{text-align:center}
+.kpi-label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.kpi-value{font-size:28px;font-weight:700}
+@media(max-width:1200px){.cards-4,.cards-5{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:768px){.sidebar{display:none}.main{margin-left:0}}
+</style>
+</head>
+<body>
+<div id="root"><div class="loading" style="padding:80px 40px">Loading application...</div></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<script type="text/babel">
+const {useState, useEffect, useRef, useCallback, useMemo} = React;
+const API = '/api';
+
+async function fetchAPI(path) {
+  const res = await fetch(`${API}${path}`);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+function useAPI(path, deps=[]) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  useEffect(() => {
+    if (!path) { setLoading(false); return; }
+    setLoading(true);
+    fetchAPI(path).then(d => {setData(d); setLoading(false)}).catch(e => {setError(e.message); setLoading(false)});
+  }, deps);
+  return {data, loading, error};
+}
+
+function Card({title, value, sub, color}) {
+  return (
+    <div className="card">
+      <h3>{title}</h3>
+      <div className="value" style={color ? {color} : {}}>{value}</div>
+      {sub && <div className="sub">{sub}</div>}
+    </div>
+  );
+}
+
+function RatingBadge({rating}) {
+  const colors = {A:'badge-success',B:'badge-success',C:'badge-info',D:'badge-warning',E:'badge-danger'};
+  return <span className={`badge ${colors[rating]||'badge-info'}`}>CII {rating}</span>;
+}
+
+function StatusDot({status}) {
+  const cls = status === 'ok' || status === 'valid' || status === 'compliant' ? 'dot-green' : status === 'warning' ? 'dot-yellow' : 'dot-red';
+  return <span className={`status-dot ${cls}`}></span>;
+}
+
+function Loading() {
+  return <div className="loading">Loading...</div>;
+}
+
+// ─── Fleet Map (Leaflet) ───
+let _fleetMap = null;
+let _fleetMarkers = [];
+
+function destroyFleetMap() {
+  if (_fleetMap) {
+    _fleetMap.remove();
+    _fleetMap = null;
+  }
+  _fleetMarkers = [];
+}
+
+function createFleetMap(container) {
+  if (!container) return false;
+  if (typeof L === 'undefined') { console.error('Leaflet not loaded'); return false; }
+  destroyFleetMap();
+  try {
+    _fleetMap = L.map(container, {
+      center: [30, 45], zoom: 3, zoomControl: true, attributionControl: true
+    });
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; OpenStreetMap, CARTO',
+      subdomains: 'abcd', maxZoom: 19
+    }).addTo(_fleetMap);
+    return true;
+  } catch(e) {
+    console.error('Map init error:', e);
+    _fleetMap = null;
+    return false;
+  }
+}
+
+function renderFleetPositions(positions, vesselFilter) {
+  if (!_fleetMap || !positions) return;
+  _fleetMarkers.forEach(function(m) { _fleetMap.removeLayer(m); });
+  _fleetMarkers = [];
+  var allPts = [];
+  positions.forEach(function(pos) {
+    var c = pos.current_position;
+    if (!c || !c.lat || !c.lon) return;
+    if (vesselFilter && pos.vessel_id !== vesselFilter) return;
+    allPts.push([c.lat, c.lon]);
+    var isXDF = (pos.propulsion_type || '').indexOf('X-DF') >= 0;
+    var color = isXDF ? '#22c55e' : '#3b82f6';
+    var heading = c.course || 0;
+    var icon = L.divIcon({
+      className: '',
+      html: '<div style="transform:rotate(' + (heading - 90) + 'deg)"><svg width="28" height="28" viewBox="0 0 24 24" fill="' + color + '" stroke="#0f172a" stroke-width="1.5"><path d="M12 2L4 20l8-5 8 5L12 2z"/></svg></div>',
+      iconSize: [28, 28], iconAnchor: [14, 14]
+    });
+    var routeCoords = (pos.route || []).map(function(w) { return [w.lat, w.lon]; });
+    if (routeCoords.length > 1) {
+      var full = L.polyline(routeCoords, { color: '#475569', weight: 2, opacity: 0.5, dashArray: '8 4' }).addTo(_fleetMap);
+      _fleetMarkers.push(full);
+      var traveled = (pos.traveled_route || []).map(function(w) { return [w.lat, w.lon]; });
+      if (traveled.length > 1) {
+        var t = L.polyline(traveled, { color: color, weight: 3, opacity: 0.9 }).addTo(_fleetMap);
+        _fleetMarkers.push(t);
+      }
+    }
+    var popup = '<div style="font-family:Inter,sans-serif;min-width:200px">' +
+      '<h4>' + pos.vessel_name + '</h4>' +
+      '<p><span class="label">IMO:</span> ' + pos.imo_number + '</p>' +
+      '<p><span class="label">Voyage:</span> ' + pos.voyage_number + '</p>' +
+      '<p><span class="label">Route:</span> ' + pos.load_port + ' \u2192 ' + pos.discharge_port + '</p>' +
+      '<p><span class="label">Speed:</span> ' + (c.speed_kn || 0).toFixed(1) + ' kn</p>' +
+      '<p><span class="label">Cargo:</span> ' + (pos.cargo_qty || 0).toLocaleString() + ' mt LNG</p>' +
+      '<div class="progress-bar"><div class="progress-fill" style="width:' + pos.progress_pct + '%;background:' + color + '"></div></div>' +
+      '<p style="margin-top:4px"><span class="label">Progress:</span> ' + pos.progress_pct + '%</p>' +
+      '</div>';
+    var marker = L.marker([c.lat, c.lon], {icon: icon}).bindPopup(popup, {maxWidth: 280}).addTo(_fleetMap);
+    _fleetMarkers.push(marker);
+  });
+  if (allPts.length > 0 && !vesselFilter) {
+    _fleetMap.fitBounds(allPts, {padding: [40, 40], maxZoom: 6});
+  } else if (allPts.length === 1) {
+    _fleetMap.setView(allPts[0], 5);
+  }
+}
+
+// ─── Dashboard ───
+function Dashboard() {
+  const {data, loading} = useAPI('/dashboard', []);
+  const {data: vessels} = useAPI('/vessels/', []);
+  const [mapFilter, setMapFilter] = useState(null);
+  const {data: positions} = useAPI('/map/fleet-positions', []);
+  const mapReady = useRef(false);
+  const mapElRef = useRef(null);
+
+  // Initialize map after loading finishes and DOM is ready
+  useEffect(() => {
+    if (loading) return;
+    let cancelled = false;
+    let tries = 0;
+    function tryInit() {
+      if (cancelled || mapReady.current) return;
+      var el = document.getElementById('fleet-map-container');
+      if (el && el.offsetHeight > 0) {
+        if (createFleetMap(el)) {
+          mapReady.current = true;
+          if (positions) renderFleetPositions(positions.positions, mapFilter);
+        } else {
+          if (tries++ < 50) setTimeout(tryInit, 200);
+        }
+      } else {
+        if (tries++ < 50) setTimeout(tryInit, 100);
+      }
+    }
+    tryInit();
+    return () => { cancelled = true; };
+  }, [loading]);
+
+  // Cleanup map on unmount
+  useEffect(() => {
+    return () => {
+      destroyFleetMap();
+      mapReady.current = false;
+    };
+  }, []);
+
+  // Update markers when positions change
+  useEffect(() => {
+    if (mapReady.current && positions) {
+      renderFleetPositions(positions.positions, mapFilter);
+    }
+  }, [positions, mapFilter]);
+
+  if (loading) return <div className="loading">Loading dashboard...</div>;
+  if (!data) return <div className="loading">No data available</div>;
+  return (
+    <div>
+      <div className="page-header"><h1>Fleet Dashboard</h1><p>LNG Carrier Fleet Performance Overview</p></div>
+      <div className="cards cards-4">
+        <Card title="Fleet Size" value={data.fleet_size || 0} sub="LNG Carriers" color="#3b82f6"/>
+        <Card title="CII Compliant" value={`${data.cii_summary?.compliant || 0}/${data.cii_summary?.total_assessed || 0}`} sub="A/B/C Rating" color="#22c55e"/>
+        <Card title="CII At Risk" value={data.cii_summary?.at_risk || 0} sub="D/E Rating" color={data.cii_summary?.at_risk > 0 ? '#ef4444' : '#22c55e'}/>
+        <Card title="Certificate Alerts" value={data.certificate_alerts || 0} sub="Expiring within 90 days" color={data.certificate_alerts > 0 ? '#eab308' : '#22c55e'}/>
+      </div>
+      <div className="cards cards-3">
+        <Card title="ECA Zones Active" value={data.eca_zones_active || 0} sub="11 global zones defined"/>
+        <Card title="Pending Alerts" value={data.pending_alerts || 0} sub="Predictive maintenance"/>
+        <Card title="Recent Voyages" value={data.recent_voyages || 0} sub="Last 10 voyages"/>
+      </div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+        <h3 style={{fontSize:16,fontWeight:600}}>Fleet Tracking</h3>
+        <select value={mapFilter||''} onChange={e=>setMapFilter(e.target.value ? +e.target.value : null)} className="btn" style={{fontSize:12}}>
+          <option value="">All Vessels</option>
+          {(positions?.positions||[]).map(p=><option key={p.vessel_id} value={p.vessel_id}>{p.vessel_name}</option>)}
+        </select>
+      </div>
+      <div className="map-legend">
+        <div className="legend-item"><div className="legend-line" style={{background:'#475569',opacity:0.5,borderBottom:'2px dashed #475569'}}></div>Planned Route</div>
+        <div className="legend-item"><div className="legend-line" style={{background:'#3b82f6'}}></div>ME-GI Vessel</div>
+        <div className="legend-item"><div className="legend-line" style={{background:'#22c55e'}}></div>X-DF Vessel</div>
+        <div className="legend-item"><span style={{fontSize:18}}>&#9650;</span> Current Position</div>
+      </div>
+      <div id="fleet-map-container"></div>
+      <div className="grid-2">
+        <div className="card">
+          <h3>Fleet Status</h3>
+          <table><thead><tr><th>Vessel</th><th>IMO</th><th>Status</th></tr></thead>
+          <tbody>{(data.vessels||[]).map((v,i) => (
+            <tr key={i}><td>{v.name}</td><td>{v.imo}</td><td><span className="badge badge-success">Active</span></td></tr>
+          ))}</tbody></table>
+        </div>
+        <div className="card">
+          <h3>CII Rating Distribution</h3>
+          <div className="chart-container"><CIIChart vessels={vessels?.vessels || []} /></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CIIChart({vessels}) {
+  const canvasRef = React.useRef(null);
+  useEffect(() => {
+    if (!canvasRef.current || !vessels.length) return;
+    const chart = new Chart(canvasRef.current, {
+      type: 'bar',
+      data: {
+        labels: vessels.map(v => v.vessel_name?.split(' ').pop() || ''),
+        datasets: [{
+          label: 'CII Rating',
+          data: vessels.map(v => 0.85 + Math.random() * 0.3),
+          backgroundColor: ['#22c55e','#3b82f6','#eab308','#ef4444','#22c55e'].slice(0, vessels.length),
+          borderRadius: 6
+        }]
+      },
+      options: {responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true,max:1.5,ticks:{color:'#94a3b8'}},x:{ticks:{color:'#94a3b8'}}}}
+    });
+    return () => chart.destroy();
+  }, [vessels]);
+  return <canvas ref={canvasRef}/>;
+}
+
+// ─── Vessels ───
+function Vessels() {
+  const {data, loading} = useAPI('/vessels/', []);
+  if (loading) return <div className="loading">Loading vessels...</div>;
+  return (
+    <div>
+      <div className="page-header"><h1>Fleet Management</h1><p>All registered LNG carriers</p></div>
+      <div className="card">
+        <table><thead><tr><th>Name</th><th>IMO</th><th>Flag</th><th>GT</th><th>DWT</th><th>Capacity (m3)</th><th>Propulsion</th><th>MCR (kW)</th><th>Speed (kn)</th><th>EEXI</th><th>Year</th></tr></thead>
+        <tbody>{(data?.vessels||[]).map((v,i) => (
+          <tr key={i}><td style={{fontWeight:600}}>{v.vessel_name}</td><td>{v.imo_number}</td><td>{v.flag_state}</td>
+          <td>{v.gross_tonnage?.toLocaleString()}</td><td>{v.deadweight_tonnage?.toLocaleString()}</td>
+          <td>{v.cargo_capacity_m3?.toLocaleString()}</td><td>{v.propulsion_type}</td>
+          <td>{v.engine_mcr_kw?.toLocaleString()}</td><td>{v.design_speed_kn}</td><td>{v.eexi_value}</td><td>{v.year_of_build}</td></tr>
+        ))}</tbody></table>
+      </div>
+    </div>
+  );
+}
+
+// ─── Voyages ───
+function Voyages() {
+  const {data, loading} = useAPI('/voyages/', []);
+  if (loading) return <div className="loading">Loading voyages...</div>;
+  return (
+    <div>
+      <div className="page-header"><h1>Voyage Operations</h1><p>Active and completed voyages</p></div>
+      <div className="card">
+        <table><thead><tr><th>Voyage</th><th>Vessel</th><th>Load Port</th><th>Discharge Port</th><th>Cargo (mt)</th><th>Distance (nm)</th><th>Status</th><th>CO2 (mt)</th></tr></thead>
+        <tbody>{(data?.voyages||[]).map((v,i) => (
+          <tr key={i}><td style={{fontWeight:600}}>{v.voyage_number}</td><td>{v.vessel_name}</td>
+          <td>{v.load_port}</td><td>{v.discharge_port}</td>
+          <td>{v.cargo_quantity_mt?.toLocaleString()}</td><td>{v.total_distance_nm?.toLocaleString()}</td>
+          <td><span className={`badge ${v.status==='completed'?'badge-success':v.status==='in_progress'?'badge-info':'badge-warning'}`}>{v.status}</span></td>
+          <td>{v.co2_total_mt?.toFixed(1)}</td></tr>
+        ))}</tbody></table>
+      </div>
+    </div>
+  );
+}
+
+// ─── CII Compliance ───
+function CIICompliance() {
+  const {data: vessels} = useAPI('/vessels/', []);
+  const [selected, setSelected] = useState(0);
+  const {data: cii, loading} = useAPI(selected === 0 ? '/compliance/cii/fleet?year=2025' : `/compliance/cii/${selected}?year=2025`, [selected]);
+  const {data: drift} = useAPI(selected !== 0 ? `/compliance/cii/drift-alert/${selected}?year=2025` : null, [selected]);
+  if (loading) return <div className="loading">Loading CII data...</div>;
+  return (
+    <div>
+      <div className="page-header"><h1>CII Compliance</h1><p>Carbon Intensity Indicator assessment per IMO MEPC.352(78)</p></div>
+      <div style={{marginBottom:16}}>
+        <select value={selected} onChange={e => setSelected(+e.target.value)} className="btn">
+          <option value={0}>Fleet (All Vessels)</option>
+          {(vessels?.vessels||[]).map(v => <option key={v.vessel_id} value={v.vessel_id}>{v.vessel_name}</option>)}
+        </select>
+      </div>
+      {selected === 0 && cii && !cii.error && <>
+        <div className="cards cards-4">
+          <Card title="Fleet Avg CII" value={cii.avg_cii} sub={`${cii.fleet_size} vessels`} color={cii.avg_cii<6.4?'#22c55e':cii.avg_cii<7.15?'#eab308':'#ef4444'}/>
+          <Card title="Best Performer" value={cii.best_performer?.rating} sub={`${cii.best_performer?.vessel_name} (${cii.best_performer?.cii_value})`} color="#22c55e"/>
+          <Card title="Worst Performer" value={cii.worst_performer?.rating} sub={`${cii.worst_performer?.vessel_name} (${cii.worst_performer?.cii_value})`} color="#ef4444"/>
+          <Card title="Rating Distribution" value={Object.values(cii.rating_distribution||{}).reduce((a,b)=>a+b,0)} sub={`A:${cii.rating_distribution?.A||0} B:${cii.rating_distribution?.B||0} C:${cii.rating_distribution?.C||0} D:${cii.rating_distribution?.D||0} E:${cii.rating_distribution?.E||0}`}/>
+        </div>
+        {cii.vessels?.length > 0 && <div className="card">
+          <h3>Fleet CII Ratings</h3>
+          <table><thead><tr><th>Vessel</th><th>CII</th><th>Rating</th><th>Target</th><th>Distance (nm)</th><th>Fuel (mt)</th></tr></thead>
+          <tbody>{cii.vessels.map((v,i) => <tr key={i}><td>{v.vessel_name}</td><td>{v.cii_value?.toFixed(2)}</td><td><span className={`badge ${v.rating==='A'||v.rating==='B'?'badge-success':v.rating==='C'?'badge-info':'badge-danger'}`}>{v.rating}</span></td><td>{v.target?.toFixed(2)}</td><td>{v.distance_nm?.toLocaleString()}</td><td>{v.fuel_mt?.toFixed(0)}</td></tr>)}</tbody></table>
+        </div>}
+      </>}
+      {selected !== 0 && cii && !cii.error && <>
+        <div className="cards cards-5">
+          <Card title="Current CII" value={cii.cii_calculated} sub={`Rating: ${cii.cii_rating}`} color={cii.cii_rating==='A'||cii.cii_rating==='B'?'#22c55e':cii.cii_rating==='C'?'#3b82f6':'#ef4444'}/>
+          <Card title="Required (C)" value={cii.cii_required_c} sub="Minimum for compliance"/>
+          <Card title="Projected Year-End" value={cii.projected_cii} sub={`Rating: ${cii.projected_rating}`} color={cii.projected_rating==='A'||cii.projected_rating==='B'?'#22c55e':'#ef4444'}/>
+          <Card title="Total CO2" value={`${cii.total_co2_mt} mt`} sub={`${cii.distance_sailed_nm?.toLocaleString()} nm sailed`}/>
+          <Card title="Days at Sea" value={cii.days_at_sea?.toFixed(0)} sub={`${cii.days_elapsed_in_year?.toFixed(0)} days elapsed`}/>
+        </div>
+        {drift?.alerts?.length > 0 && <div className="card" style={{borderColor:'#ef4444',marginBottom:16}}>
+          <h3 style={{color:'#ef4444'}}>CII Drift Alerts</h3>
+          {drift.alerts.map((a,i) => <p key={i} style={{margin:'8px 0',fontSize:13}}>{a.message}</p>)}
+          {drift.recommendation?.length > 0 && <div style={{marginTop:8}}><strong style={{fontSize:12,color:'var(--muted)'}}>Recommendations:</strong>{drift.recommendation.map((r,i) => <p key={i} style={{fontSize:12,color:'var(--muted)',margin:'4px 0'}}>&bull; {r}</p>)}</div>}
+        </div>}
+        <div className="grid-2">
+          <div className="card"><h3>Rating Boundaries ({cii.year})</h3><div className="chart-container"><CIIBoundariesChart boundaries={cii.rating_boundaries} current={cii.cii_calculated}/></div></div>
+          <div className="card"><h3>Fuel Breakdown</h3><div className="chart-container"><FuelBreakdownChart fuel={cii.fuel_breakdown}/></div></div>
+        </div>
+      </>}
+    </div>
+  );
+}
+
+function CIIBoundariesChart({boundaries, current}) {
+  const ref = React.useRef(null);
+  useEffect(() => {
+    if (!ref.current || !boundaries) return;
+    const chart = new Chart(ref.current, {
+      type: 'bar',
+      data: {
+        labels: ['A','B','C','D','E'],
+        datasets: [
+          {label:'Boundary',data:[boundaries.A,boundaries.B,boundaries.C,boundaries.D,1.5],backgroundColor:['#22c55e','#22c55e','#3b82f6','#eab308','#ef4444'].map(c=>c+'66'),borderRadius:4},
+          {label:'Current',data:[0,0,current,0,0],backgroundColor:'rgba(59,130,246,0.8)',borderRadius:4}
+        ]
+      },
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#94a3b8'}}},scales:{y:{beginAtZero:true,ticks:{color:'#94a3b8'}},x:{ticks:{color:'#94a3b8'}}}}
+    });
+    return () => chart.destroy();
+  }, [boundaries, current]);
+  return <canvas ref={ref}/>;
+}
+
+function FuelBreakdownChart({fuel}) {
+  const ref = React.useRef(null);
+  useEffect(() => {
+    if (!ref.current || !fuel) return;
+    const entries = Object.entries(fuel).filter(([k,v]) => v > 0);
+    const chart = new Chart(ref.current, {
+      type: 'doughnut',
+      data: {labels:entries.map(([k])=>k),datasets:[{data:entries.map(([,v])=>v),backgroundColor:['#ef4444','#3b82f6','#06b6d4','#22c55e','#a855f7'],borderWidth:0}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#94a3b8',padding:12}}}}
+    });
+    return () => chart.destroy();
+  }, [fuel]);
+  return <canvas ref={ref}/>;
+}
+
+// ─── EU ETS ───
+function EUEts() {
+  const {data: vessels} = useAPI('/vessels/', []);
+  const [selected, setSelected] = useState(1);
+  const {data: summary, loading} = useAPI(`/compliance/eu-ets/summary/${selected}`, [selected]);
+  if (loading) return <div className="loading">Loading EU ETS...</div>;
+  return (
+    <div>
+      <div className="page-header"><h1>EU ETS</h1><p>EU Emissions Trading System - Maritime Inclusion (2024+)</p></div>
+      <select value={selected} onChange={e=>setSelected(+e.target.value)} className="btn" style={{marginBottom:16}}>
+        {(vessels?.vessels||[]).map(v=><option key={v.vessel_id} value={v.vessel_id}>{v.vessel_name}</option>)}
+      </select>
+      {summary && !summary.error && <div className="cards cards-4">
+        <Card title="Total Allocated" value={`${summary.total_allocated_mt} mt`} sub="CO2 allocated" color="#3b82f6"/>
+        <Card title="EUA Price" value={`\u20AC${summary.eua_price_eur}`} sub="Per allowance"/>
+        <Card title="Total Cost" value={`\u20AC${summary.total_cost_eur?.toLocaleString()}`} sub="EU ETS cost" color="#ef4444"/>
+        <Card title="Surrender Deadline" value={summary.surrender_deadline} sub="Annual deadline"/>
+      </div>}
+    </div>
+  );
+}
+
+// ─── FuelEU Maritime ───
+function FuelEU() {
+  const {data: vessels} = useAPI('/vessels/', []);
+  const [selected, setSelected] = useState(1);
+  const {data: fueleu, loading} = useAPI(`/compliance/fueleu/${selected}`, [selected]);
+  if (loading) return <div className="loading">Loading FuelEU...</div>;
+  return (
+    <div>
+      <div className="page-header"><h1>FuelEU Maritime</h1><p>GHG intensity regulation per vessel</p></div>
+      <select value={selected} onChange={e=>setSelected(+e.target.value)} className="btn" style={{marginBottom:16}}>
+        {(vessels?.vessels||[]).map(v=><option key={v.vessel_id} value={v.vessel_id}>{v.vessel_name}</option>)}
+      </select>
+      {fueleu && !fueleu.error && <>
+        <div className="cards cards-4">
+          <Card title="GHG Intensity" value={`${fueleu.overall_intensity_g_mj} g/MJ`} sub="WTW basis" color={fueleu.compliant?'#22c55e':'#ef4444'}/>
+          <Card title="Reference Limit" value={`${fueleu.reference_value_g_mj} g/MJ`} sub="2025 limit"/>
+          <Card title="Compliant" value={fueleu.compliant ? 'Yes' : 'No'} color={fueleu.compliant?'#22c55e':'#ef4444'}/>
+          <Card title="Penalty Cost" value={`\u20AC${fueleu.penalty_cost_eur?.toLocaleString()}`} sub="EUR penalty" color={fueleu.penalty_cost_eur>0?'#ef4444':'#22c55e'}/>
+        </div>
+        <div className="card"><h3>Fuel Breakdown</h3><div className="chart-container"><FuelEUDetailsChart details={fueleu.fuel_details}/></div></div>
+      </>}
+    </div>
+  );
+}
+
+function FuelEUDetailsChart({details}) {
+  const ref = React.useRef(null);
+  useEffect(() => {
+    if (!ref.current || !details?.length) return;
+    const chart = new Chart(ref.current, {
+      type: 'bar',
+      data: {labels:details.map(d=>d.fuel_type),datasets:[{label:'GHG (tCO2e)',data:details.map(d=>d.ghg_co2e_mt),backgroundColor:'#3b82f680',borderRadius:4},{label:'Intensity (g/MJ)',data:details.map(d=>d.intensity_g_mj),backgroundColor:'#22c55e80',borderRadius:4}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#94a3b8'}}},scales:{y:{ticks:{color:'#94a3b8'}},x:{ticks:{color:'#94a3b8'}}}}
+    });
+    return () => chart.destroy();
+  }, [details]);
+  return <canvas ref={ref}/>;
+}
+
+// ─── EEXI ───
+function EEXI() {
+  const {data: vessels} = useAPI('/vessels/', []);
+  const [selected, setSelected] = useState(1);
+  const {data: eexi, loading} = useAPI(`/compliance/eexi/${selected}`, [selected]);
+  const {data: epl} = useAPI(`/compliance/epl/${selected}`, [selected]);
+  if (loading) return <div className="loading">Loading EEXI...</div>;
+  return (
+    <div>
+      <div className="page-header"><h1>EEXI & EPL</h1><p>Energy Efficiency Existing Ship Index & Engine Power Limiter</p></div>
+      <select value={selected} onChange={e=>setSelected(+e.target.value)} className="btn" style={{marginBottom:16}}>
+        {(vessels?.vessels||[]).map(v=><option key={v.vessel_id} value={v.vessel_id}>{v.vessel_name}</option>)}
+      </select>
+      {eexi && !eexi.error && <div className="cards cards-4">
+        <Card title="Attained EEXI" value={eexi.attained_eexi} sub={`Required: ${eexi.required_eexi}`} color={eexi.compliant?'#22c55e':'#ef4444'}/>
+        <Card title="Compliant" value={eexi.compliant ? 'Yes' : 'No'} color={eexi.compliant?'#22c55e':'#ef4444'}/>
+        <Card title="Headroom" value={`${eexi.headroom_pct}%`} sub="Margin to required"/>
+        <Card title="EPL Impact" value={eexi.epl_impact} sub="Engine power limiter"/>
+      </div>}
+      {epl && !epl.error && <div className="card" style={{marginTop:16}}>
+        <h3>EPL Configurations</h3>
+        {epl.configurations?.length > 0 ? <table><thead><tr><th>ECA Zone</th><th>Power Limit %</th><th>Limited Power (kW)</th><th>Status</th></tr></thead>
+        <tbody>{epl.configurations.map((c,i) => <tr key={i}><td>{c.eca_zone || 'Global'}</td><td>{c.power_limit_pct}%</td><td>{c.limited_power_kw}</td><td><span className="badge badge-success">Configured</span></td></tr>)}</tbody></table>
+        : <p style={{color:'var(--muted)',fontSize:13}}>No EPL restrictions configured</p>}
+      </div>}
+    </div>
+  );
+}
+
+// ─── ECA & Emissions ───
+function ECAEmissions() {
+  const {data: vessels} = useAPI('/vessels/', []);
+  const [selected, setSelected] = useState(1);
+  const {data: em, loading} = useAPI(`/eca/emissions/${selected}`, [selected]);
+  const {data: egr} = useAPI(`/eca/egr/${selected}`, [selected]);
+  const {data: igc} = useAPI(`/eca/igc/${selected}`, [selected]);
+  return (
+    <div>
+      <div className="page-header"><h1>ECA & Emissions</h1><p>Emission Control Area compliance and emissions monitoring</p></div>
+      <select value={selected} onChange={e=>setSelected(+e.target.value)} className="btn" style={{marginBottom:16}}>
+        {(vessels?.vessels||[]).map(v=><option key={v.vessel_id} value={v.vessel_id}>{v.vessel_name}</option>)}
+      </select>
+      <div className="cards cards-4">
+        <Card title="CO2" value={`${em?.total_co2_mt || 0} mt`} sub="Total emissions" color="#ef4444"/>
+        <Card title="SOx" value={`${em?.total_sox_mt || 0} mt`} sub="Sulfur oxides" color="#eab308"/>
+        <Card title="NOx" value={`${em?.total_nox_mt || 0} mt`} sub="Nitrogen oxides" color="#3b82f6"/>
+        <Card title="CH4" value={`${em?.total_ch4_mt || 0} mt`} sub="Methane slip" color="#a855f7"/>
+      </div>
+      <div className="grid-2">
+        <div className="card">
+          <h3>EGR Status</h3>
+          {egr && !egr.error ? <div>
+            <p style={{fontSize:13,marginBottom:8}}><StatusDot status={egr.nox_compliant?'ok':'error'}/>NOx Reduction: {egr.avg_nox_reduction_pct}%</p>
+            <p style={{fontSize:13,marginBottom:8}}><StatusDot status={egr.water_treatment_ok?'ok':'error'}/>Water Treatment: {egr.avg_water_treatment_health}%</p>
+            <p style={{fontSize:13,color:'var(--muted)'}}>{egr.recommendation}</p>
+          </div> : <p style={{color:'var(--muted)',fontSize:13}}>No EGR data</p>}
+        </div>
+        <div className="card">
+          <h3>IGC Code Compliance</h3>
+          {igc && !igc.error ? <div>
+            <p style={{fontSize:13,marginBottom:8}}><StatusDot status={igc.compliant?'ok':'error'}/>Total Tanks: {igc.total_tanks}</p>
+            <p style={{fontSize:13,marginBottom:8}}><StatusDot status={igc.recent_violations===0?'ok':'error'}/>Violations: {igc.recent_violations}</p>
+          </div> : <p style={{color:'var(--muted)',fontSize:13}}>No IGC data</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Certificates ───
+function Certificates() {
+  const {data: vessels} = useAPI('/vessels/', []);
+  const [selected, setSelected] = useState(1);
+  const {data: certs, loading} = useAPI(`/certificates/${selected}`, [selected]);
+  return (
+    <div>
+      <div className="page-header"><h1>Certificate Management</h1><p>IAPP, EIAPP, IGC, ISM, ISPS and other certificates</p></div>
+      <select value={selected} onChange={e=>setSelected(+e.target.value)} className="btn" style={{marginBottom:16}}>
+        {(vessels?.vessels||[]).map(v=><option key={v.vessel_id} value={v.vessel_id}>{v.vessel_name}</option>)}
+      </select>
+      {certs && !certs.error && <>
+        <div className="cards cards-4">
+          <Card title="Valid" value={certs.valid} color="#22c55e"/>
+          <Card title="Expiring Soon" value={certs.expiring_soon} color="#eab308"/>
+          <Card title="Critical" value={certs.critical} color="#ef4444"/>
+          <Card title="Expired" value={certs.expired} color="#ef4444"/>
+        </div>
+        {certs.alerts?.length > 0 && <div className="card" style={{borderColor:'#eab308',marginBottom:16}}>
+          <h3 style={{color:'#eab308'}}>Certificate Alerts</h3>
+          {certs.alerts.map((a,i)=><p key={i} style={{fontSize:13,margin:'6px 0'}}>{a.message}</p>)}
+        </div>}
+        <div className="card">
+          <table><thead><tr><th>Type</th><th>Number</th><th>Expiry</th><th>Days Left</th><th>Status</th></tr></thead>
+          <tbody>{(certs.certificates||[]).map((c,i) => (
+            <tr key={i}><td>{c.cert_type}</td><td>{c.cert_number}</td><td>{c.expiry_date?.split('T')[0]}</td>
+            <td>{c.days_remaining}</td><td><span className={`badge ${c.status==='valid'?'badge-success':c.status==='expiring_soon'?'badge-warning':'badge-danger'}`}>{c.status}</span></td></tr>
+          ))}</tbody></table>
+        </div>
+      </>}
+    </div>
+  );
+}
+
+// ─── SEEMP ───
+function SEEMP() {
+  const {data: vessels} = useAPI('/vessels/', []);
+  const [selected, setSelected] = useState(1);
+  const {data: measures, loading} = useAPI(`/seemp/measures/${selected}`, [selected]);
+  const {data: improvement} = useAPI(`/seemp/improvement/${selected}`, [selected]);
+  return (
+    <div>
+      <div className="page-header"><h1>SEEMP Part III</h1><p>Ship Energy Efficiency Management Plan - Improvement Measures</p></div>
+      <select value={selected} onChange={e=>setSelected(+e.target.value)} className="btn" style={{marginBottom:16}}>
+        {(vessels?.vessels||[]).map(v=><option key={v.vessel_id} value={v.vessel_id}>{v.vessel_name}</option>)}
+      </select>
+      <div className="cards cards-4">
+        <Card title="Measures" value={measures?.total_measures || 0} sub="Registered measures"/>
+        <Card title="Estimated Savings" value={`${measures?.total_estimated_saving_mt || 0} mt`} sub="Fuel savings"/>
+        <Card title="Improvement" value={`${improvement?.improvement_pct || 0}%`} sub="vs previous year" color={improvement?.improvement_pct > 0 ? '#22c55e' : '#ef4444'}/>
+        <Card title="Fuel Saving" value={`${improvement?.fuel_saving_mt || 0} mt`} sub="Actual reduction"/>
+      </div>
+      {measures?.measures?.length > 0 && <div className="card">
+        <h3>Registered Measures</h3>
+        <table><thead><tr><th>Type</th><th>Description</th><th>Est. Saving (mt)</th><th>Status</th></tr></thead>
+        <tbody>{measures.measures.map((m,i) => <tr key={i}><td>{m.measure_type}</td><td>{m.description}</td><td>{m.estimated_saving_mt}</td><td><span className={`badge ${m.status==='implemented'?'badge-success':'badge-info'}`}>{m.status}</span></td></tr>)}</tbody></table>
+      </div>}
+    </div>
+  );
+}
+
+// ─── Digital Twin ───
+function DigitalTwin() {
+  const {data: vessels} = useAPI('/vessels/', []);
+  const [selected, setSelected] = useState(0);
+  const {data: health, loading} = useAPI(selected === 0 ? '/digital-twin/fleet' : `/digital-twin/health/${selected}`, [selected]);
+  return (
+    <div>
+      <div className="page-header"><h1>Digital Twin</h1><p>Predictive maintenance and health assessment</p></div>
+      <select value={selected} onChange={e=>setSelected(+e.target.value)} className="btn" style={{marginBottom:16}}>
+        <option value={0}>Fleet (All Vessels)</option>
+        {(vessels?.vessels||[]).map(v=><option key={v.vessel_id} value={v.vessel_id}>{v.vessel_name}</option>)}
+      </select>
+      {selected === 0 && health && <>
+        <div className="cards cards-3">
+          <Card title="Fleet Avg Health" value={`${health.fleet_avg_health || 'N/A'}%`} sub={`${health.fleet_size} vessels`} color={(health.fleet_avg_health||0)>80?'#22c55e':'#eab308'}/>
+          <Card title="Vessels Needing Attention" value={health.vessels_needing_attention || 0} sub="Health < 70%" color={health.vessels_needing_attention>0?'#ef4444':'#22c55e'}/>
+          <Card title="Fleet Size" value={health.fleet_size || 0} sub="Total vessels"/>
+        </div>
+        {health.vessels?.length > 0 && <div className="card">
+          <h3>Fleet Health Overview</h3>
+          <table><thead><tr><th>Vessel</th><th>Engine</th><th>Hull</th><th>BOG</th><th>Overall</th><th>Alerts</th></tr></thead>
+          <tbody>{health.vessels.map((v,i) => <tr key={i}><td>{v.vessel_name}</td><td style={{color:v.engine_health>80?'#22c55e':v.engine_health>60?'#eab308':'#ef4444'}}>{v.engine_health?.toFixed(1)}%</td><td style={{color:v.hull_health>80?'#22c55e':v.hull_health>60?'#eab308':'#ef4444'}}>{v.hull_health?.toFixed(1)}%</td><td style={{color:v.bog_health>80?'#22c55e':v.bog_health>60?'#eab308':'#ef4444'}}>{v.bog_health?.toFixed(1)}%</td><td><strong>{v.overall_health_index?.toFixed(1)}%</strong></td><td>{v.alerts>0?<span className="badge badge-danger">{v.alerts}</span>:'-'}</td></tr>)}</tbody></table>
+        </div>}
+      </>}
+      {selected !== 0 && health && !health.error && <>
+        <div className="cards cards-3">
+          <Card title="Engine Health" value={`${health.engine_health_index || 'N/A'}`} sub="Health index (0-100)" color={(health.engine_health_index||0)>80?'#22c55e':(health.engine_health_index||0)>60?'#eab308':'#ef4444'}/>
+          <Card title="Predicted RUL" value={`${health.predicted_rul_days || 'N/A'} days`} sub="Remaining useful life"/>
+          <Card title="Anomalies" value={health.anomalies?.length || 0} sub="Detected anomalies" color={health.anomalies?.length>0?'#ef4444':'#22c55e'}/>
+        </div>
+        {health.anomalies?.length > 0 && <div className="card" style={{borderColor:'#ef4444'}}>
+          <h3 style={{color:'#ef4444'}}>Detected Anomalies</h3>
+          <table><thead><tr><th>Type</th><th>Severity</th><th>Value</th><th>Expected</th></tr></thead>
+          <tbody>{health.anomalies.map((a,i) => <tr key={i}><td>{a.type}</td><td><span className={`badge ${a.severity==='high'?'badge-danger':'badge-warning'}`}>{a.severity}</span></td><td>{a.value}</td><td>{a.expected}</td></tr>)}</tbody></table>
+        </div>}
+      </>}
+    </div>
+  );
+}
+
+// ─── Fleet Analytics ───
+function FleetAnalytics() {
+  const {data: kpi, loading: kpiLoading, error: kpiErr} = useAPI('/analytics/fleet-kpi', []);
+  const {data: rankingData, loading: rankLoading, error: rankErr} = useAPI('/analytics/fleet-ranking?metric=sfoc&limit=50', []);
+  const {data: tsData, loading: tsLoading, error: tsErr} = useAPI('/analytics/fleet/timeseries?resolution=daily', []);
+
+  const [metric, setMetric] = useState('sfoc');
+  const [sortDir, setSortDir] = useState('asc');
+  const co2ChartRef = useRef(null);
+  const fuelChartRef = useRef(null);
+  const barChartRef = useRef(null);
+  const co2ChartInst = useRef(null);
+  const fuelChartInst = useRef(null);
+  const barChartInst = useRef(null);
+
+  const metricConfig = {
+    sfoc: {label: 'SFOC', unit: 'g/kWh', apiMetric: 'sfoc', key: 'avg_sfoc'},
+    eeoI: {label: 'EEOI', unit: 'g CO2/t·nm', apiMetric: 'eeoi', key: 'avg_eeoi'},
+    co2: {label: 'CO2', unit: 'mt', apiMetric: 'co2', key: 'total_co2_mt'},
+    distance: {label: 'Distance', unit: 'nm', apiMetric: 'distance', key: 'total_distance_nm'},
+    bog: {label: 'BOG Rate', unit: '%', apiMetric: 'bog_rate', key: 'bog_rate_pct'},
+  };
+
+  const sortedRanking = useMemo(() => {
+    if (!rankingData?.vessels) return [];
+    const arr = [...rankingData.vessels];
+    const cfg = metricConfig[metric] || metricConfig.sfoc;
+    const key = cfg.key;
+    if (metric !== (rankingData.active_metric || 'sfoc')) {
+      arr.sort((a, b) => (sortDir === 'asc' ? (a[key] ?? 0) - (b[key] ?? 0) : (b[key] ?? 0) - (a[key] ?? 0)));
+    } else {
+      arr.sort((a, b) => (sortDir === 'asc' ? (a.rank ?? 0) - (b.rank ?? 0) : (b.rank ?? 0) - (a.rank ?? 0)));
+    }
+    return arr;
+  }, [rankingData, metric, sortDir]);
+
+  useEffect(() => {
+    if (!co2ChartRef.current || !tsData?.data?.length) { return; }
+    if (co2ChartInst.current) co2ChartInst.current.destroy();
+    const labels = tsData.data.map(d => d.date || d.period || '');
+    co2ChartInst.current = new Chart(co2ChartRef.current, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{label: 'Fleet CO2 (mt)', data: tsData.data.map(d => d.total_co2_mt ?? d.co2 ?? 0), borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.1)', fill: true, tension: 0.3, pointRadius: 2}]
+      },
+      options: {responsive: true, maintainAspectRatio: false, plugins: {legend: {labels: {color: '#94a3b8'}}}, scales: {y: {ticks: {color: '#94a3b8'}}, x: {ticks: {color: '#94a3b8', maxTicksLimit: 15}}}}
+    });
+    return () => { if (co2ChartInst.current) { co2ChartInst.current.destroy(); co2ChartInst.current = null; } };
+  }, [tsData]);
+
+  useEffect(() => {
+    if (!fuelChartRef.current || !tsData?.data?.length) { return; }
+    if (fuelChartInst.current) fuelChartInst.current.destroy();
+    const labels = tsData.data.map(d => d.date || d.period || '');
+    fuelChartInst.current = new Chart(fuelChartRef.current, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{label: 'Fleet Fuel (mt)', data: tsData.data.map(d => d.total_fuel_mt ?? d.fuel ?? 0), borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', fill: true, tension: 0.3, pointRadius: 2}]
+      },
+      options: {responsive: true, maintainAspectRatio: false, plugins: {legend: {labels: {color: '#94a3b8'}}}, scales: {y: {ticks: {color: '#94a3b8'}}, x: {ticks: {color: '#94a3b8', maxTicksLimit: 15}}}}
+    });
+    return () => { if (fuelChartInst.current) { fuelChartInst.current.destroy(); fuelChartInst.current = null; } };
+  }, [tsData]);
+
+  useEffect(() => {
+    if (!barChartRef.current || !sortedRanking.length) { return; }
+    if (barChartInst.current) barChartInst.current.destroy();
+    const cfg = metricConfig[metric] || metricConfig.sfoc;
+    const labels = sortedRanking.map(v => (v.vessel_name || '').split(' ').slice(1).join(' ') || v.vessel_name || '');
+    const values = sortedRanking.map(v => v[cfg.key] ?? 0);
+    const colors = sortedRanking.map((_, i) => i < 3 ? '#22c55e' : i >= sortedRanking.length - 3 ? '#ef4444' : '#3b82f6');
+    barChartInst.current = new Chart(barChartRef.current, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{label: cfg.label, data: values, backgroundColor: colors.map(c => c + '99'), borderColor: colors, borderWidth: 1, borderRadius: 4}]
+      },
+      options: {responsive: true, maintainAspectRatio: false, indexAxis: sortedRanking.length > 8 ? 'y' : 'x', plugins: {legend: {display: false}}, scales: {y: {ticks: {color: '#94a3b8'}}, x: {ticks: {color: '#94a3b8'}}}}
+    });
+    return () => { if (barChartInst.current) { barChartInst.current.destroy(); barChartInst.current = null; } };
+  }, [sortedRanking, metric]);
+
+  function handleMetricChange(m) {
+    setMetric(m);
+    setSortDir('asc');
+  }
+
+  if (kpiLoading && !kpi) return <div className="loading">Loading fleet analytics...</div>;
+
+  if ((kpiErr || rankErr || tsErr) && !kpi && !rankingData && !tsData) {
+    return (
+      <div>
+        <div className="page-header"><h1>Fleet Analytics</h1><p>Aggregate fleet performance analytics and KPIs</p></div>
+        <div className="card" style={{textAlign:'center',padding:60}}>
+          <div style={{fontSize:48,marginBottom:16}}>&#128202;</div>
+          <h3 style={{marginBottom:8}}>Analytics data not available</h3>
+          <p style={{color:'var(--muted)',fontSize:14,maxWidth:400,margin:'0 auto'}}>
+            Run <code style={{background:'var(--bg)',padding:'2px 8px',borderRadius:4,fontSize:13}}>python -m lng_fleet_performance.modules.aggregate</code> or call the aggregate endpoint to generate analytics data first.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const k = kpi || {};
+  const cfg = metricConfig[metric] || metricConfig.sfoc;
+
+  return (
+    <div>
+      <div className="page-header"><h1>Fleet Analytics</h1><p>Aggregate fleet performance analytics and KPIs</p></div>
+      <div className="cards cards-3">
+        <Card title="Total Fleet Fuel" value={`${(k.total_fuel_mt ?? 0).toLocaleString()} mt`} sub="Total fuel consumed" color="#3b82f6"/>
+        <Card title="Total CO2" value={`${(k.total_co2_mt ?? 0).toLocaleString()} mt`} sub="Total emissions" color="#ef4444"/>
+        <Card title="Total Distance" value={`${(k.total_distance_nm ?? 0).toLocaleString()} nm`} sub="Fleet nautical miles"/>
+      </div>
+      <div className="cards cards-3">
+        <Card title="Avg SFOC" value={k.avg_sfoc != null ? Number(k.avg_sfoc).toFixed(1) : 'N/A'} sub="g/kWh weighted average"/>
+        <Card title="Avg EEOI" value={k.avg_eeoi != null ? Number(k.avg_eeoi).toFixed(3) : 'N/A'} sub="g CO2/t·nm average"/>
+        <Card title="Fleet Size" value={k.fleet_size ?? k.vessel_count ?? 0} sub="Active LNG carriers" color="#22c55e"/>
+      </div>
+
+      <div className="grid-2">
+        <div className="card"><h3>Fleet Daily CO2 Emissions</h3><div className="chart-container"><canvas ref={co2ChartRef}/></div></div>
+        <div className="card"><h3>Fleet Daily Fuel Consumption</h3><div className="chart-container"><canvas ref={fuelChartRef}/></div></div>
+      </div>
+
+      <div className="card" style={{marginTop:16}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+          <h3 style={{margin:0}}>Vessel Ranking</h3>
+          <div style={{display:'flex',gap:8,alignItems:'center'}}>
+            <select value={metric} onChange={e => handleMetricChange(e.target.value)} className="btn" style={{fontSize:12}}>
+              <option value="sfoc">SFOC (g/kWh)</option>
+              <option value="eeoI">EEOI (g CO2/t·nm)</option>
+              <option value="co2">CO2 (mt)</option>
+              <option value="distance">Distance (nm)</option>
+              <option value="bog">BOG Rate (%)</option>
+            </select>
+            <button className="btn" style={{fontSize:12}} onClick={() => setSortDir(d => d === 'asc' ? 'desc' : 'asc')}>
+              {sortDir === 'asc' ? '&#9650; Asc' : '&#9660; Desc'}
+            </button>
+          </div>
+        </div>
+        {rankLoading && <div className="loading">Loading rankings...</div>}
+        {!rankLoading && sortedRanking.length === 0 && <p style={{color:'var(--muted)',fontSize:13}}>No ranking data available</p>}
+        {sortedRanking.length > 0 && <table>
+          <thead><tr><th style={{width:60}}>Rank</th><th>Vessel</th><th>IMO</th><th>Propulsion</th><th style={{textAlign:'right'}}>{cfg.label} ({cfg.unit})</th></tr></thead>
+          <tbody>{sortedRanking.map((v, i) => (
+            <tr key={i}>
+              <td style={{fontWeight:600}}>{i + 1}</td>
+              <td style={{fontWeight:500}}>{v.vessel_name || v.name || '-'}</td>
+              <td>{v.imo_number || v.imo || '-'}</td>
+              <td>{v.propulsion_type || '-'}</td>
+              <td style={{textAlign:'right',fontVariantNumeric:'tabular-nums'}}>{v[cfg.key] != null ? Number(v[cfg.key]).toFixed(metric === 'bog' ? 2 : metric === 'eeoI' ? 3 : 1) : '-'}</td>
+            </tr>
+          ))}</tbody>
+        </table>}
+      </div>
+
+      <div className="card" style={{marginTop:16}}>
+        <h3>Vessel Comparison: {cfg.label}</h3>
+        <div className="chart-container" style={{height: Math.max(300, sortedRanking.length * 36) + 'px'}}><canvas ref={barChartRef}/></div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Charterer: Voyage P&L ───
+function VoyagePnl() {
+  const {data, loading, error} = useAPI('/charterer/voyage-pnl', []);
+  if (loading) return <div className="loading">Loading voyage P&L...</div>;
+  if (error || !data) return <div><div className="page-header"><h1>Voyage P&L</h1><p>Charterer voyage profit and loss analysis</p></div><div className="card" style={{textAlign:'center',padding:60}}><p style={{color:'var(--muted)',fontSize:14}}>Charterer analytics data not available. Run data generation and aggregation first.</p></div></div>;
+  const rows = data.vessels || data.voyages || data.rows || [];
+  return (
+    <div>
+      <div className="page-header"><h1>Voyage P&L</h1><p>Charterer voyage profit and loss analysis</p></div>
+      <div className="cards cards-4">
+        <Card title="Total Revenue" value={`$${(data.total_revenue||0).toLocaleString()}`} sub="All voyages" color="#22c55e"/>
+        <Card title="Total Fuel Cost" value={`$${(data.total_fuel_cost||0).toLocaleString()}`} sub="Bunker expenses" color="#ef4444"/>
+        <Card title="Net Profit" value={`$${(data.net_profit||0).toLocaleString()}`} sub="After all costs" color={(data.net_profit||0)>=0?'#22c55e':'#ef4444'}/>
+        <Card title="ROI" value={`${(data.roi_pct||0).toFixed(1)}%`} sub="Return on investment" color={(data.roi_pct||0)>=0?'#22c55e':'#ef4444'}/>
+      </div>
+      <div className="card">
+        <h3>Voyage P&L Breakdown</h3>
+        <table><thead><tr><th>Vessel</th><th style={{textAlign:'right'}}>Revenue</th><th style={{textAlign:'right'}}>Fuel Cost</th><th style={{textAlign:'right'}}>Port Cost</th><th style={{textAlign:'right'}}>OPEX</th><th style={{textAlign:'right'}}>Net Profit</th><th style={{textAlign:'right'}}>ROI%</th><th style={{textAlign:'right'}}>Cost/NM</th></tr></thead>
+        <tbody>{rows.map((r,i) => <tr key={i}>
+          <td style={{fontWeight:600}}>{r.vessel_name||r.vessel||'-'}</td>
+          <td style={{textAlign:'right'}}>${(r.revenue||0).toLocaleString()}</td>
+          <td style={{textAlign:'right'}}>${(r.fuel_cost||0).toLocaleString()}</td>
+          <td style={{textAlign:'right'}}>${(r.port_cost||0).toLocaleString()}</td>
+          <td style={{textAlign:'right'}}>${(r.opex||0).toLocaleString()}</td>
+          <td style={{textAlign:'right',color:(r.net_profit||0)>=0?'#22c55e':'#ef4444',fontWeight:600}}>${(r.net_profit||0).toLocaleString()}</td>
+          <td style={{textAlign:'right',color:(r.roi_pct||0)>=0?'#22c55e':'#ef4444'}}>{(r.roi_pct||0).toFixed(1)}%</td>
+          <td style={{textAlign:'right'}}>${(r.cost_per_nm||0).toFixed(2)}</td>
+        </tr>)}</tbody></table>
+      </div>
+    </div>
+  );
+}
+
+// ─── Charterer: CP Compliance ───
+function CpCompliance() {
+  const {data, loading, error} = useAPI('/charterer/cp-compliance', []);
+  if (loading) return <div className="loading">Loading CP compliance...</div>;
+  if (error || !data) return <div><div className="page-header"><h1>CP Compliance</h1><p>Charter party performance compliance</p></div><div className="card" style={{textAlign:'center',padding:60}}><p style={{color:'var(--muted)',fontSize:14}}>Charterer analytics data not available. Run data generation and aggregation first.</p></div></div>;
+  const rows = data.vessels || data.rows || [];
+  return (
+    <div>
+      <div className="page-header"><h1>CP Compliance</h1><p>Charter party performance compliance monitoring</p></div>
+      <div className="cards cards-4">
+        <Card title="Avg Speed Deviation" value={`${(data.avg_speed_dev||0).toFixed(2)}%`} sub="Warranted vs actual"/>
+        <Card title="Avg Consumption Dev" value={`${(data.avg_consumption_dev||0).toFixed(2)}%`} sub="CP vs actual"/>
+        <Card title="Compliant Vessels" value={data.compliant_count||0} sub="Within tolerances" color="#22c55e"/>
+        <Card title="Non-Compliant" value={data.non_compliant_count||0} sub="Exceeding tolerances" color="#ef4444"/>
+      </div>
+      <div className="card">
+        <h3>Vessel CP Compliance</h3>
+        <table><thead><tr><th>Vessel</th><th style={{textAlign:'right'}}>Actual Speed</th><th style={{textAlign:'right'}}>Warranted</th><th style={{textAlign:'right'}}>Weather-Corr</th><th style={{textAlign:'right'}}>Speed Dev%</th><th style={{textAlign:'right'}}>Consumption Dev%</th><th>Status</th></tr></thead>
+        <tbody>{rows.map((r,i) => <tr key={i}>
+          <td style={{fontWeight:600}}>{r.vessel_name||r.vessel||'-'}</td>
+          <td style={{textAlign:'right'}}>{(r.actual_speed||0).toFixed(1)} kn</td>
+          <td style={{textAlign:'right'}}>{(r.warranted_speed||0).toFixed(1)} kn</td>
+          <td style={{textAlign:'right'}}>{(r.weather_corrected_speed||0).toFixed(1)} kn</td>
+          <td style={{textAlign:'right'}}>{(r.speed_deviation_pct||0).toFixed(2)}%</td>
+          <td style={{textAlign:'right'}}>{(r.consumption_deviation_pct||0).toFixed(2)}%</td>
+          <td><span className={`badge ${(r.speed_deviation_pct||0)<=5?'badge-success':'badge-danger'}`}>{(r.speed_deviation_pct||0)<=5?'Compliant':'Non-Compliant'}</span></td>
+        </tr>)}</tbody></table>
+      </div>
+    </div>
+  );
+}
+
+// ─── Charterer: Bunker Costs ───
+function BunkerCosts() {
+  const {data, loading, error} = useAPI('/charterer/bunker-costs', []);
+  const chartRef = React.useRef(null);
+  const chartInst = React.useRef(null);
+  const rows = data?.vessels || data?.rows || [];
+  useEffect(() => {
+    if (!chartRef.current || !rows.length) return;
+    if (chartInst.current) chartInst.current.destroy();
+    chartInst.current = new Chart(chartRef.current, {
+      type: 'bar',
+      data: {
+        labels: rows.map(r => (r.vessel_name||r.vessel||'').split(' ').slice(1).join(' ') || r.vessel_name),
+        datasets: [{label:'Fuel Cost ($)', data: rows.map(r => r.fuel_cost||0), backgroundColor: '#3b82f699', borderColor: '#3b82f6', borderWidth: 1, borderRadius: 4}]
+      },
+      options: {responsive:true, maintainAspectRatio:false, plugins:{legend:{labels:{color:'#94a3b8'}}}, scales:{y:{ticks:{color:'#94a3b8',callback:v=>'$'+v.toLocaleString()}}, x:{ticks:{color:'#94a3b8'}}}}
+    });
+    return () => { if (chartInst.current) { chartInst.current.destroy(); chartInst.current = null; } };
+  }, [rows]);
+  if (loading) return <div className="loading">Loading bunker costs...</div>;
+  if (error || !data) return <div><div className="page-header"><h1>Bunker Costs</h1><p>Fuel cost analysis by vessel</p></div><div className="card" style={{textAlign:'center',padding:60}}><p style={{color:'var(--muted)',fontSize:14}}>Charterer analytics data not available. Run data generation and aggregation first.</p></div></div>;
+  return (
+    <div>
+      <div className="page-header"><h1>Bunker Costs</h1><p>Fuel cost analysis per vessel</p></div>
+      <div className="cards cards-4">
+        <Card title="Total Fuel" value={`${(data.total_fuel_mt||0).toLocaleString()} mt`} sub="All vessels" color="#3b82f6"/>
+        <Card title="Total Fuel Cost" value={`$${(data.total_fuel_cost||0).toLocaleString()}`} sub="Aggregate cost" color="#ef4444"/>
+        <Card title="Avg Cost/NM" value={`$${(data.avg_cost_per_nm||0).toFixed(2)}`} sub="Per nautical mile"/>
+        <Card title="Avg Cost/Tonne Cargo" value={`$${(data.avg_cost_per_tonne||0).toFixed(2)}`} sub="Per tonne cargo"/>
+      </div>
+      <div className="card">
+        <h3>Fuel Cost by Vessel</h3>
+        <div className="chart-container"><canvas ref={chartRef}/></div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Charterer: BOG Impact ───
+function BogImpact() {
+  const {data, loading, error} = useAPI('/charterer/bog-impact', []);
+  const chartRef = React.useRef(null);
+  const chartInst = React.useRef(null);
+  const rows = data?.vessels || data?.rows || [];
+  useEffect(() => {
+    if (!chartRef.current || !rows.length) return;
+    if (chartInst.current) chartInst.current.destroy();
+    chartInst.current = new Chart(chartRef.current, {
+      type: 'bar',
+      data: {
+        labels: rows.map(r => (r.vessel_name||r.vessel||'').split(' ').slice(1).join(' ') || r.vessel_name),
+        datasets: [{label:'BOG %', data: rows.map(r => r.bog_pct||0), backgroundColor: rows.map(r => (r.bog_pct||0)>3?'#ef444499':(r.bog_pct||0)>1.5?'#eab30899':'#22c55e99'), borderColor: rows.map(r => (r.bog_pct||0)>3?'#ef4444':(r.bog_pct||0)>1.5?'#eab308':'#22c55e'), borderWidth: 1, borderRadius: 4}]
+      },
+      options: {responsive:true, maintainAspectRatio:false, plugins:{legend:{labels:{color:'#94a3b8'}}}, scales:{y:{ticks:{color:'#94a3b8',callback:v=>v+'%'}}, x:{ticks:{color:'#94a3b8'}}}}
+    });
+    return () => { if (chartInst.current) { chartInst.current.destroy(); chartInst.current = null; } };
+  }, [rows]);
+  if (loading) return <div className="loading">Loading BOG impact...</div>;
+  if (error || !data) return <div><div className="page-header"><h1>BOG Impact</h1><p>Boil-off gas impact on cargo and costs</p></div><div className="card" style={{textAlign:'center',padding:60}}><p style={{color:'var(--muted)',fontSize:14}}>Charterer analytics data not available. Run data generation and aggregation first.</p></div></div>;
+  return (
+    <div>
+      <div className="page-header"><h1>BOG Impact</h1><p>Boil-off gas impact on cargo and costs</p></div>
+      <div className="cards cards-3">
+        <Card title="Total BOG" value={`${(data.total_bog_mt||0).toLocaleString()} mt`} sub="Boil-off gas lost" color="#ef4444"/>
+        <Card title="BOG % of Cargo" value={`${(data.bog_pct_of_cargo||0).toFixed(2)}%`} sub="Cargo loss ratio" color="#eab308"/>
+        <Card title="Total BOG Cost" value={`$${(data.total_bog_cost||0).toLocaleString()}`} sub="Lost cargo value" color="#ef4444"/>
+      </div>
+      <div className="card">
+        <h3>BOG % by Vessel</h3>
+        <div className="chart-container"><canvas ref={chartRef}/></div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Charterer: Off-Hire Risk ───
+function OffHireRisk() {
+  const {data, loading, error} = useAPI('/charterer/offhire-risk', []);
+  if (loading) return <div className="loading">Loading off-hire risk...</div>;
+  if (error || !data) return <div><div className="page-header"><h1>Off-Hire Risk</h1><p>Off-hire risk assessment and monitoring</p></div><div className="card" style={{textAlign:'center',padding:60}}><p style={{color:'var(--muted)',fontSize:14}}>Charterer analytics data not available. Run data generation and aggregation first.</p></div></div>;
+  const rows = data.vessels || data.rows || [];
+  const getTrend = (t) => t === 'up' ? '\u2191' : t === 'down' ? '\u2193' : '\u2192';
+  const getTrendColor = (t) => t === 'up' ? '#ef4444' : t === 'down' ? '#22c55e' : '#94a3b8';
+  return (
+    <div>
+      <div className="page-header"><h1>Off-Hire Risk</h1><p>Vessel off-hire risk assessment</p></div>
+      <div className="cards cards-4">
+        <Card title="High Risk" value={data.high_risk||0} sub="Vessels" color="#ef4444"/>
+        <Card title="Medium Risk" value={data.medium_risk||0} sub="Vessels" color="#eab308"/>
+        <Card title="Low Risk" value={data.low_risk||0} sub="Vessels" color="#22c55e"/>
+        <Card title="Avg Risk Score" value={(data.avg_risk_score||0).toFixed(1)} sub="Fleet average"/>
+      </div>
+      <div className="card">
+        <h3>Vessel Risk Assessment</h3>
+        <table><thead><tr><th>Vessel</th><th>Risk Score</th><th>Level</th><th>Speed Deg%</th><th>SFOC Deg%</th><th>Alarms</th><th>Trend</th></tr></thead>
+        <tbody>{rows.map((r,i) => <tr key={i}>
+          <td style={{fontWeight:600}}>{r.vessel_name||r.vessel||'-'}</td>
+          <td><div style={{display:'flex',alignItems:'center',gap:8}}>
+            <div style={{flex:1,height:6,background:'var(--border)',borderRadius:3,overflow:'hidden'}}><div style={{width:`${Math.min((r.risk_score||0)*10,100)}%`,height:'100%',background:(r.risk_score||0)>7?'#ef4444':(r.risk_score||0)>4?'#eab308':'#22c55e',borderRadius:3}}/></div>
+            <span style={{fontSize:12,minWidth:32,textAlign:'right'}}>{(r.risk_score||0).toFixed(1)}</span>
+          </div></td>
+          <td><span className={`badge ${(r.risk_level||'').toLowerCase()==='high'?'badge-danger':(r.risk_level||'').toLowerCase()==='medium'?'badge-warning':'badge-success'}`}>{r.risk_level||'-'}</span></td>
+          <td style={{textAlign:'right'}}>{(r.speed_degradation_pct||0).toFixed(1)}%</td>
+          <td style={{textAlign:'right'}}>{(r.sfoc_degradation_pct||0).toFixed(1)}%</td>
+          <td style={{textAlign:'right'}}>{r.alarms||0}</td>
+          <td style={{textAlign:'center',color:getTrendColor(r.trend),fontWeight:700,fontSize:16}}>{getTrend(r.trend)}</td>
+        </tr>)}</tbody></table>
+      </div>
+    </div>
+  );
+}
+
+// ─── Charterer: Carbon Cost ───
+function CarbonCost() {
+  const {data, loading, error} = useAPI('/charterer/carbon-cost', []);
+  if (loading) return <div className="loading">Loading carbon cost...</div>;
+  if (error || !data) return <div><div className="page-header"><h1>Carbon Cost</h1><p>Carbon emissions cost and CII impact</p></div><div className="card" style={{textAlign:'center',padding:60}}><p style={{color:'var(--muted)',fontSize:14}}>Charterer analytics data not available. Run data generation and aggregation first.</p></div></div>;
+  const rows = data.vessels || data.rows || [];
+  return (
+    <div>
+      <div className="page-header"><h1>Carbon Cost</h1><p>Carbon emissions cost and CII rating impact</p></div>
+      <div className="cards cards-4">
+        <Card title="Total CO2" value={`${(data.total_co2_mt||0).toLocaleString()} mt`} sub="Fleet emissions" color="#ef4444"/>
+        <Card title="EU ETS Cost" value={`\u20AC${(data.eu_ets_cost||0).toLocaleString()}`} sub="EU Emissions Trading" color="#3b82f6"/>
+        <Card title="Avg Carbon Cost/NM" value={`$${(data.avg_carbon_cost_per_nm||0).toFixed(2)}`} sub="Per nautical mile"/>
+        <Card title="CII Compliant" value={data.cii_compliant_count||0} sub="A/B/C rated vessels" color="#22c55e"/>
+      </div>
+      <div className="card">
+        <h3>Vessel Carbon Breakdown</h3>
+        <table><thead><tr><th>Vessel</th><th style={{textAlign:'right'}}>CO2 (mt)</th><th style={{textAlign:'right'}}>ETS Cost</th><th>CII Rating</th><th style={{textAlign:'right'}}>CII Score</th><th style={{textAlign:'right'}}>Cost/NM</th></tr></thead>
+        <tbody>{rows.map((r,i) => <tr key={i}>
+          <td style={{fontWeight:600}}>{r.vessel_name||r.vessel||'-'}</td>
+          <td style={{textAlign:'right'}}>{(r.co2_mt||0).toLocaleString()}</td>
+          <td style={{textAlign:'right'}}>\u20AC{(r.ets_cost||0).toLocaleString()}</td>
+          <td><span className={`badge ${(r.cii_rating||'').includes('A')||['A','B','C'].includes(r.cii_rating)?'badge-success':'badge-danger'}`}>{r.cii_rating||'-'}</span></td>
+          <td style={{textAlign:'right'}}>{(r.cii_score||0).toFixed(1)}</td>
+          <td style={{textAlign:'right'}}>${(r.cost_per_nm||0).toFixed(2)}</td>
+        </tr>)}</tbody></table>
+      </div>
+    </div>
+  );
+}
+
+// ─── Charterer: Fleet Utilization ───
+function Utilization() {
+  const {data, loading, error} = useAPI('/charterer/utilization', []);
+  const {data: ts} = useAPI('/charterer/utilization/timeseries', []);
+  const chartRef = React.useRef(null);
+  const chartInst = React.useRef(null);
+  const rows = data?.vessels || data?.rows || [];
+  useEffect(() => {
+    if (!chartRef.current || !rows.length) return;
+    if (chartInst.current) chartInst.current.destroy();
+    const statuses = ['laden','ballast','idle_port'];
+    const statusLabels = ['Laden','Ballast','Idle/Port'];
+    const statusColors = ['#22c55e','#3b82f6','#eab308'];
+    chartInst.current = new Chart(chartRef.current, {
+      type: 'bar',
+      data: {
+        labels: rows.map(r => (r.vessel_name||r.vessel||'').split(' ').slice(1).join(' ') || r.vessel_name),
+        datasets: statuses.map((s,si) => ({
+          label: statusLabels[si],
+          data: rows.map(r => r[s]||r[`${s}_pct`]||0),
+          backgroundColor: statusColors[si]+'99',
+          borderColor: statusColors[si],
+          borderWidth: 1,
+          borderRadius: 2
+        }))
+      },
+      options: {responsive:true, maintainAspectRatio:false, indexAxis:'y', plugins:{legend:{labels:{color:'#94a3b8'}}}, scales:{x:{stacked:true, ticks:{color:'#94a3b8',callback:v=>v+'%'}}, y:{stacked:true, ticks:{color:'#94a3b8'}}}}
+    });
+    return () => { if (chartInst.current) { chartInst.current.destroy(); chartInst.current = null; } };
+  }, [rows]);
+  if (loading) return <div className="loading">Loading fleet utilization...</div>;
+  if (error || !data) return <div><div className="page-header"><h1>Fleet Utilization</h1><p>Fleet operational utilization monitoring</p></div><div className="card" style={{textAlign:'center',padding:60}}><p style={{color:'var(--muted)',fontSize:14}}>Charterer analytics data not available. Run data generation and aggregation first.</p></div></div>;
+  return (
+    <div>
+      <div className="page-header"><h1>Fleet Utilization</h1><p>Fleet operational utilization monitoring</p></div>
+      <div className="cards cards-4">
+        <Card title="Fleet Utilization" value={`${(data.fleet_utilization_pct||0).toFixed(1)}%`} sub="Overall" color="#3b82f6"/>
+        <Card title="Laden Vessels" value={data.laden_count||0} sub="With cargo" color="#22c55e"/>
+        <Card title="Ballast" value={data.ballast_count||0} sub="In transit empty" color="#eab308"/>
+        <Card title="Idle/Port" value={data.idle_count||0} sub="At port" color="#ef4444"/>
+      </div>
+      <div className="card">
+        <h3>Status Distribution</h3>
+        <div className="chart-container"><canvas ref={chartRef}/></div>
+      </div>
+      <div className="card" style={{marginTop:16}}>
+        <h3>Vessel Utilization</h3>
+        <table><thead><tr><th>Vessel</th><th>Status</th><th style={{textAlign:'right'}}>Cargo %</th><th style={{textAlign:'right'}}>Speed</th><th style={{textAlign:'right'}}>Utilization 30d%</th></tr></thead>
+        <tbody>{rows.map((r,i) => <tr key={i}>
+          <td style={{fontWeight:600}}>{r.vessel_name||r.vessel||'-'}</td>
+          <td><span className={`badge ${(r.status||'').toLowerCase()==='laden'?'badge-success':(r.status||'').toLowerCase()==='ballast'?'badge-info':'badge-warning'}`}>{r.status||'-'}</span></td>
+          <td style={{textAlign:'right'}}>{(r.cargo_pct||0).toFixed(1)}%</td>
+          <td style={{textAlign:'right'}}>{(r.speed||0).toFixed(1)} kn</td>
+          <td style={{textAlign:'right'}}>{(r.utilization_30d_pct||0).toFixed(1)}%</td>
+        </tr>)}</tbody></table>
+      </div>
+    </div>
+  );
+}
+
+// ─── Charterer: Voyage Compare ───
+function VoyageCompare() {
+  const {data: allVessels} = useAPI('/vessels/', []);
+  const [selected, setSelected] = useState([]);
+  const [selectAll, setSelectAll] = useState(false);
+  useEffect(() => {
+    if (allVessels?.vessels?.length && !selectAll) {
+      setSelected(allVessels.vessels.map(v => v.vessel_id));
+      setSelectAll(true);
+    }
+  }, [allVessels]);
+  const vesselIds = selected.join(',');
+  const {data, loading, error} = useAPI(vesselIds ? `/charterer/voyage-compare?vessel_ids=${vesselIds}` : null, [vesselIds]);
+  const [chartMetric, setChartMetric] = useState('fuel_cost');
+  const chartRef = React.useRef(null);
+  const chartInst = React.useRef(null);
+  const rows = data?.vessels || data?.rows || [];
+  useEffect(() => {
+    if (!chartRef.current || !rows.length) return;
+    if (chartInst.current) chartInst.current.destroy();
+    const metricLabels = {fuel_cost:'Fuel Cost',revenue:'Revenue',net_pnl:'Net P&L',co2:'CO2',fuel_mt:'Fuel (mt)',avg_speed:'Avg Speed'};
+    chartInst.current = new Chart(chartRef.current, {
+      type: 'bar',
+      data: {
+        labels: rows.map(r => (r.vessel_name||r.vessel||'').split(' ').slice(1).join(' ') || r.vessel_name),
+        datasets: [{label: metricLabels[chartMetric]||chartMetric, data: rows.map(r => r[chartMetric]||0), backgroundColor: '#3b82f699', borderColor: '#3b82f6', borderWidth: 1, borderRadius: 4}]
+      },
+      options: {responsive:true, maintainAspectRatio:false, indexAxis: rows.length>8?'y':'x', plugins:{legend:{labels:{color:'#94a3b8'}}}, scales:{y:{ticks:{color:'#94a3b8'}}, x:{ticks:{color:'#94a3b8'}}}}
+    });
+    return () => { if (chartInst.current) { chartInst.current.destroy(); chartInst.current = null; } };
+  }, [rows, chartMetric]);
+  const toggleVessel = (id) => {
+    setSelected(prev => prev.includes(id) ? prev.filter(v=>v!==id) : [...prev, id]);
+  };
+  const toggleAll = () => {
+    if (selectAll) { setSelected([]); setSelectAll(false); } else {
+      setSelected(allVessels?.vessels?.map(v=>v.vessel_id) || []); setSelectAll(true);
+    }
+  };
+  return (
+    <div>
+      <div className="page-header"><h1>Voyage Compare</h1><p>Compare voyage performance across vessels</p></div>
+      <div className="card" style={{marginBottom:16}}>
+        <div style={{display:'flex',gap:12,flexWrap:'wrap',alignItems:'center'}}>
+          <button className={`btn ${selectAll?'btn-primary':''}`} onClick={toggleAll} style={{fontSize:12}}>{selectAll?'Deselect All':'Select All'}</button>
+          {(allVessels?.vessels||[]).map(v => <label key={v.vessel_id} style={{display:'flex',gap:4,alignItems:'center',fontSize:12,cursor:'pointer'}}>
+            <input type="checkbox" checked={selected.includes(v.vessel_id)} onChange={()=>toggleVessel(v.vessel_id)}/>
+            {v.vessel_name}
+          </label>)}
+        </div>
+      </div>
+      {loading && <div className="loading">Loading comparison...</div>}
+      {!loading && error && <div className="card" style={{textAlign:'center',padding:60}}><p style={{color:'var(--muted)',fontSize:14}}>Charterer analytics data not available. Run data generation and aggregation first.</p></div>}
+      {data && !error && <>
+        <div className="card">
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+            <h3 style={{margin:0}}>Compare</h3>
+            <select value={chartMetric} onChange={e=>setChartMetric(e.target.value)} className="btn" style={{fontSize:12}}>
+              <option value="fuel_cost">Fuel Cost</option>
+              <option value="revenue">Revenue</option>
+              <option value="net_pnl">Net P&L</option>
+              <option value="co2">CO2</option>
+              <option value="fuel_mt">Fuel (mt)</option>
+              <option value="avg_speed">Avg Speed</option>
+            </select>
+          </div>
+          <table><thead><tr><th>Vessel</th><th style={{textAlign:'right'}}>Avg Speed</th><th style={{textAlign:'right'}}>Fuel (mt)</th><th style={{textAlign:'right'}}>CO2</th><th style={{textAlign:'right'}}>Distance</th><th style={{textAlign:'right'}}>SFOC</th><th style={{textAlign:'right'}}>BOG Rate</th><th style={{textAlign:'right'}}>Fuel Cost</th><th style={{textAlign:'right'}}>Revenue</th><th style={{textAlign:'right'}}>Net P&L</th></tr></thead>
+          <tbody>{rows.map((r,i) => <tr key={i}>
+            <td style={{fontWeight:600}}>{r.vessel_name||r.vessel||'-'}</td>
+            <td style={{textAlign:'right'}}>{(r.avg_speed||0).toFixed(1)} kn</td>
+            <td style={{textAlign:'right'}}>{(r.fuel_mt||0).toLocaleString()}</td>
+            <td style={{textAlign:'right'}}>{(r.co2||0).toLocaleString()}</td>
+            <td style={{textAlign:'right'}}>{(r.distance||0).toLocaleString()} nm</td>
+            <td style={{textAlign:'right'}}>{(r.sfoc||0).toFixed(1)} g/kWh</td>
+            <td style={{textAlign:'right'}}>{(r.bog_rate||0).toFixed(2)}%</td>
+            <td style={{textAlign:'right'}}>${(r.fuel_cost||0).toLocaleString()}</td>
+            <td style={{textAlign:'right'}}>${(r.revenue||0).toLocaleString()}</td>
+            <td style={{textAlign:'right',color:(r.net_pnl||0)>=0?'#22c55e':'#ef4444',fontWeight:600}}>${(r.net_pnl||0).toLocaleString()}</td>
+          </tr>)}</tbody></table>
+        </div>
+        <div className="card" style={{marginTop:16}}>
+          <h3>{chartMetric.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase())} Comparison</h3>
+          <div className="chart-container"><canvas ref={chartRef}/></div>
+        </div>
+      </>}
+    </div>
+  );
+}
+
+// ─── Charterer: Market Benchmark ───
+function Benchmark() {
+  const {data, loading, error} = useAPI('/charterer/benchmark', []);
+  if (loading) return <div className="loading">Loading market benchmark...</div>;
+  if (error || !data) return <div><div className="page-header"><h1>Market Benchmark</h1><p>Vessel performance vs market average</p></div><div className="card" style={{textAlign:'center',padding:60}}><p style={{color:'var(--muted)',fontSize:14}}>Charterer analytics data not available. Run data generation and aggregation first.</p></div></div>;
+  const rows = data.vessels || data.rows || [];
+  const market = data.market_avg || data.market_average || {};
+  const colorCell = (vessel, market, lower) => lower ? (vessel <= market ? '#22c55e' : '#ef4444') : (vessel >= market ? '#22c55e' : '#ef4444');
+  return (
+    <div>
+      <div className="page-header"><h1>Market Benchmark</h1><p>Compare fleet performance against market averages</p></div>
+      <div className="card">
+        <h3>Vessel vs Market</h3>
+        <table><thead><tr><th>Vessel</th><th style={{textAlign:'right'}}>SFOC (vs Market)</th><th style={{textAlign:'right'}}>EEOI (vs Market)</th><th style={{textAlign:'right'}}>BOG (vs Market)</th><th style={{textAlign:'right'}}>Speed (vs Market)</th><th>Overall Rank</th></tr></thead>
+        <tbody>
+          <tr style={{background:'rgba(59,130,246,0.06)'}}><td style={{fontWeight:600,color:'var(--muted)'}}>Market Average</td><td style={{textAlign:'right'}}>{(market.sfoc||0).toFixed(1)} g/kWh</td><td style={{textAlign:'right'}}>{(market.eeoi||0).toFixed(3)} g/t&middot;nm</td><td style={{textAlign:'right'}}>{(market.bog||0).toFixed(2)}%</td><td style={{textAlign:'right'}}>{(market.speed||0).toFixed(1)} kn</td><td>-</td></tr>
+          {rows.map((r,i) => <tr key={i}>
+            <td style={{fontWeight:600}}>{r.vessel_name||r.vessel||'-'}</td>
+            <td style={{textAlign:'right',color:colorCell(r.sfoc,market.sfoc,true)}}>{(r.sfoc||0).toFixed(1)} g/kWh ({(r.sfoc_vs_market||0)>0?'+':''}{(r.sfoc_vs_market||0).toFixed(1)}%)</td>
+            <td style={{textAlign:'right',color:colorCell(r.eeoi,market.eeoi,true)}}>{(r.eeoi||0).toFixed(3)} ({(r.eeoi_vs_market||0)>0?'+':''}{(r.eeoi_vs_market||0).toFixed(1)}%)</td>
+            <td style={{textAlign:'right',color:colorCell(r.bog,market.bog,true)}}>{(r.bog||0).toFixed(2)}% ({(r.bog_vs_market||0)>0?'+':''}{(r.bog_vs_market||0).toFixed(1)}%)</td>
+            <td style={{textAlign:'right',color:colorCell(r.speed,market.speed,false)}}>{(r.speed||0).toFixed(1)} kn ({(r.speed_vs_market||0)>0?'+':''}{(r.speed_vs_market||0).toFixed(1)}%)</td>
+            <td><span className={`badge ${i<2?'badge-success':i>=rows.length-2?'badge-danger':'badge-info'}`}>#{i+1}</span></td>
+          </tr>)}
+        </tbody></table>
+      </div>
+    </div>
+  );
+}
+
+// ─── Charterer: Laytime ───
+function Laytime() {
+  const {data, loading, error} = useAPI('/charterer/laytime', []);
+  if (loading) return <div className="loading">Loading laytime data...</div>;
+  if (error || !data) return <div><div className="page-header"><h1>Laytime</h1><p>Port laytime and demurrage risk analysis</p></div><div className="card" style={{textAlign:'center',padding:60}}><p style={{color:'var(--muted)',fontSize:14}}>Charterer analytics data not available. Run data generation and aggregation first.</p></div></div>;
+  const rows = data.vessels || data.rows || [];
+  return (
+    <div>
+      <div className="page-header"><h1>Laytime</h1><p>Port laytime and demurrage risk analysis</p></div>
+      <div className="cards cards-4">
+        <Card title="Total Port Days" value={(data.total_port_days||0).toFixed(1)} sub="All port calls" color="#3b82f6"/>
+        <Card title="Avg Port Stay" value={`${(data.avg_port_stay||0).toFixed(1)} days`} sub="Per call"/>
+        <Card title="Port Calls" value={data.total_port_calls||0} sub="Total"/>
+        <Card title="High Risk Vessels" value={data.high_risk_count||0} sub="Demurrage exposure" color="#ef4444"/>
+      </div>
+      <div className="card">
+        <h3>Port Laytime Details</h3>
+        <table><thead><tr><th>Vessel</th><th style={{textAlign:'right'}}>Port Days</th><th style={{textAlign:'right'}}>Avg Stay</th><th style={{textAlign:'right'}}>Port Calls</th><th style={{textAlign:'right'}}>Allowed Hours</th><th style={{textAlign:'right'}}>Used Hours</th><th style={{textAlign:'right'}}>Deviation%</th><th>Demurrage Risk</th></tr></thead>
+        <tbody>{rows.map((r,i) => <tr key={i}>
+          <td style={{fontWeight:600}}>{r.vessel_name||r.vessel||'-'}</td>
+          <td style={{textAlign:'right'}}>{(r.port_days||0).toFixed(1)}</td>
+          <td style={{textAlign:'right'}}>{(r.avg_stay||0).toFixed(1)} days</td>
+          <td style={{textAlign:'right'}}>{r.port_calls||0}</td>
+          <td style={{textAlign:'right'}}>{(r.allowed_hours||0).toFixed(0)}</td>
+          <td style={{textAlign:'right'}}>{(r.used_hours||0).toFixed(0)}</td>
+          <td style={{textAlign:'right',color:(r.deviation_pct||0)>0?'#ef4444':'#22c55e'}}>{(r.deviation_pct||0)>0?'+':''}{(r.deviation_pct||0).toFixed(1)}%</td>
+          <td><span className={`badge ${(r.demurrage_risk||'').toLowerCase()==='high'?'badge-danger':(r.demurrage_risk||'').toLowerCase()==='medium'?'badge-warning':'badge-success'}`}>{r.demurrage_risk||'-'}</span></td>
+        </tr>)}</tbody></table>
+      </div>
+    </div>
+  );
+}
+
+// ─── Hull Performance ───
+function HullOverview() {
+  const [data,setData]=useState(null);
+  const [vessel,setVessel]=useState(0);
+  const [fleetData,setFleetData]=useState(null);
+  const [loading,setLoading]=useState(true);
+  const [error,setError]=useState(null);
+  const {data:vessels}=useAPI('/vessels/',[]);
+  useEffect(()=>{
+    if(vessel===0){
+      setLoading(true);setError(null);
+      fetch('/api/hull/fleet-comparison').then(r=>r.json()).then(d=>{setFleetData(d);setLoading(false)}).catch(e=>{setError(e.message);setLoading(false)});
+    } else {
+      setLoading(true);setError(null);setFleetData(null);
+      fetch(`/api/hull/overview/${vessel}`).then(r=>r.json()).then(d=>{setData(d);setLoading(false)}).catch(e=>{setError(e.message);setLoading(false)});
+    }
+  },[vessel]);
+  if(loading) return <Loading/>;
+  if(vessel===0&&fleetData){
+    const fv=fleetData.vessels||[];
+    return (
+      <div className="page">
+        <h2>Hull Performance Overview</h2>
+        <div style={{marginBottom:16}}><select value={vessel} onChange={e=>setVessel(+e.target.value)} style={{background:'#1e293b',color:'#e2e8f0',border:'1px solid #334155',borderRadius:6,padding:'6px 12px'}}>
+          <option value={0}>Fleet (All Vessels)</option>
+          {(vessels?.vessels||[]).map(v=><option key={v.vessel_id} value={v.vessel_id}>{v.vessel_name}</option>)}
+        </select></div>
+        <div className="cards cards-3">
+          <div className="card kpi"><div className="kpi-label">Fleet Avg HPI</div><div className="kpi-value" style={{color:'#22c55e'}}>{fv.length?(fv.reduce((s,v)=>s+(v.hull_performance_index||0),0)/fv.length).toFixed(1):'—'}</div></div>
+          <div className="card kpi"><div className="kpi-label">Avg Power Deviation</div><div className="kpi-value">{fv.length?(fv.reduce((s,v)=>s+(v.avg_power_deviation_pct||0),0)/fv.length).toFixed(1):'—'}%</div></div>
+          <div className="card kpi"><div className="kpi-label">Clean Hulls</div><div className="kpi-value" style={{color:'#22c55e'}}>{fv.filter(v=>v.fouling_level==='clean').length}/{fv.length}</div></div>
+        </div>
+        <div className="card"><h3>Fleet Hull Ranking</h3>
+          <table><thead><tr><th>#</th><th>Vessel</th><th>HPI</th><th>Power Dev%</th><th>Roughness</th><th>QPC</th><th>Fouling</th></tr></thead>
+          <tbody>{fv.map((v,i)=><tr key={i}><td>{v.rank||i+1}</td><td>{v.vessel_name}</td><td style={{color:v.hull_performance_index>=70?'#22c55e':v.hull_performance_index>=50?'#eab308':'#ef4444'}}>{v.hull_performance_index?.toFixed(1)}</td><td>{v.avg_power_deviation_pct?.toFixed(1)}%</td><td>{v.avg_roughness_mm?.toFixed(3)} mm</td><td>{v.avg_qpc?.toFixed(3)}</td><td><span className={`badge ${v.fouling_level==='clean'?'badge-success':v.fouling_level==='moderate'?'badge-warning':'badge-danger'}`}>{v.fouling_level}</span></td></tr>)}</tbody></table>
+        </div>
+      </div>
+    );
+  }
+  if(error||data?.error) return <div className="page"><h2>Hull Performance Overview</h2><div className="card"><p style={{color:'#94a3b8'}}>Hull performance data not available. Run data generation and aggregation first.</p></div></div>;
+  const hpi=data?.hpi||{};const fouling=data?.fouling||{};const cleaning=data?.cleaning||{};
+  return (
+    <div className="page">
+      <h2>Hull Performance Overview</h2>
+      <div style={{marginBottom:16}}><select value={vessel} onChange={e=>setVessel(+e.target.value)} style={{background:'#1e293b',color:'#e2e8f0',border:'1px solid #334155',borderRadius:6,padding:'6px 12px'}}>
+        <option value={0}>Fleet (All Vessels)</option>
+        {(vessels?.vessels||[]).map(v=><option key={v.vessel_id} value={v.vessel_id}>{v.vessel_name}</option>)}
+      </select></div>
+      <div className="cards cards-4">
+        <div className="card kpi"><div className="kpi-label">Hull Performance Index</div><div className="kpi-value" style={{color:hpi.hull_performance_index>=70?'#22c55e':hpi.hull_performance_index>=50?'#eab308':'#ef4444'}}>{hpi.hull_performance_index??'—'}</div><div style={{fontSize:12,color:'#94a3b8',marginTop:4}}>{hpi.rating?.toUpperCase()||'—'} — {hpi.trend||'—'}</div></div>
+        <div className="card kpi"><div className="kpi-label">Power Deviation</div><div className="kpi-value" style={{color:fouling.avg_power_deviation_pct<5?'#22c55e':fouling.avg_power_deviation_pct<10?'#eab308':'#ef4444'}}>{fouling.avg_power_deviation_pct??'—'}%</div><div style={{fontSize:12,color:'#94a3b8',marginTop:4}}>{fouling.fouling_level?.toUpperCase()||'—'}</div></div>
+        <div className="card kpi"><div className="kpi-label">Roughness</div><div className="kpi-value">{fouling.avg_equivalent_roughness_mm??'—'} mm</div><div style={{fontSize:12,color:'#94a3b8',marginTop:4}}>QPC: {fouling.qpc_trending??'—'}</div></div>
+        <div className="card kpi"><div className="kpi-label">Daily Fuel Penalty</div><div className="kpi-value" style={{color:'#ef4444'}}>${cleaning.cost_analysis?.daily_fuel_penalty_usd?.toLocaleString()??'—'}</div><div style={{fontSize:12,color:'#94a3b8',marginTop:4}}>Payback: {cleaning.cost_analysis?.payback_days??'—'} days</div></div>
+      </div>
+      <div className="cards cards-2">
+        <div className="card"><h3>HPI Components</h3>
+          {hpi.components&&Object.entries(hpi.components).map(([k,v])=>(
+            <div key={k} style={{marginBottom:12}}>
+              <div style={{display:'flex',justifyContent:'space-between',fontSize:13,color:'#cbd5e1',marginBottom:4}}>
+                <span>{k.replace(/_/g,' ').replace('score','').trim()}</span><span>{v}/100</span>
+              </div>
+              <div style={{background:'#1e293b',borderRadius:4,height:8}}>
+                <div style={{width:`${v}%`,height:'100%',borderRadius:4,background:v>=70?'#22c55e':v>=50?'#eab308':'#ef4444'}}/>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="card"><h3>Cost Impact</h3>
+          <div style={{display:'grid',gap:12}}>
+            {[
+              ['Monthly Fuel Penalty',`$${cleaning.cost_analysis?.monthly_fuel_penalty_usd?.toLocaleString()??'—'}`],
+              ['Annual Fuel Penalty',`$${cleaning.cost_analysis?.annual_fuel_penalty_usd?.toLocaleString()??'—'}`],
+              ['Cleaning Cost','$150,000'],
+              ['Drydock Cost','$800,000'],
+              ['Annual Savings',`$${cleaning.cost_analysis?.annual_savings_usd?.toLocaleString()??'—'}`],
+            ].map(([l,v])=>(
+              <div key={l} style={{display:'flex',justifyContent:'space-between',padding:'8px 0',borderBottom:'1px solid #1e293b'}}>
+                <span style={{color:'#94a3b8',fontSize:13}}>{l}</span><span style={{color:'#e2e8f0',fontSize:13,fontWeight:600}}>{v}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{marginTop:12,padding:10,background:'#1e293b',borderRadius:6,fontSize:12,color:'#94a3b8'}}>{cleaning.recommendation||'—'}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SpeedPower() {
+  const [data,setData]=useState(null);
+  const [vessel,setVessel]=useState(0);
+  const [fleetData,setFleetData]=useState(null);
+  const [loading,setLoading]=useState(true);
+  const ref=React.useRef(null);
+  const {data:vessels}=useAPI('/vessels/',[]);
+  useEffect(()=>{
+    if(vessel===0){
+      setLoading(true);
+      fetch('/api/hull/fleet-comparison').then(r=>r.json()).then(d=>{setFleetData(d);setLoading(false)}).catch(()=>setLoading(false));
+    } else {
+      setLoading(true);setFleetData(null);
+      fetch(`/api/hull/speed-power/${vessel}`).then(r=>r.json()).then(d=>{setData(d);setLoading(false)}).catch(()=>setLoading(false));
+    }
+  },[vessel]);
+  useEffect(()=>{
+    if(!ref.current||vessel===0||!data?.speed_power_average?.length)return;
+    const d=data.speed_power_average;
+    const chart=new Chart(ref.current,{type:'scatter',data:{datasets:[
+      {label:'Actual',data:d.map(p=>({x:p.speed_kn,y:p.avg_actual_power_kw})),backgroundColor:'#3b82f6',pointRadius:6},
+      {label:'Reference',data:d.map(p=>({x:p.speed_kn,y:p.reference_power_kw})),backgroundColor:'#22c55e',pointRadius:6,pointStyle:'triangle'},
+    ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#94a3b8'}},tooltip:{callbacks:{label:ctx=>{const p=d.find(x=>x.speed_kn===ctx.parsed.x);return p?`${ctx.dataset.label}: ${ctx.parsed.y} kW (dev: ${p.deviation_pct}%)`:ctx.parsed.y}}}},scales:{x:{title:{display:true,text:'Speed (kn)',color:'#94a3b8'},ticks:{color:'#94a3b8'},grid:{color:'#1e293b'}},y:{title:{display:true,text:'Power (kW)',color:'#94a3b8'},ticks:{color:'#94a3b8'},grid:{color:'#1e293b'}}}}});
+    return()=>chart.destroy();
+  },[data,vessel]);
+  if(loading) return <Loading/>;
+  if(vessel===0&&fleetData){
+    const fv=fleetData.vessels||[];
+    return (
+      <div className="page">
+        <h2>Speed-Power Analysis</h2>
+        <div style={{marginBottom:16}}><select value={vessel} onChange={e=>setVessel(+e.target.value)} style={{background:'#1e293b',color:'#e2e8f0',border:'1px solid #334155',borderRadius:6,padding:'6px 12px'}}>
+          <option value={0}>Fleet (All Vessels)</option>
+          {(vessels?.vessels||[]).map(v=><option key={v.vessel_id} value={v.vessel_id}>{v.vessel_name}</option>)}
+        </select></div>
+        <div className="card"><h3>Fleet Speed-Power Comparison</h3>
+          <table><thead><tr><th>Vessel</th><th>Avg Power Dev%</th><th>HPI</th><th>Fouling</th><th>Data Points</th></tr></thead>
+          <tbody>{fv.map((v,i)=><tr key={i}><td>{v.vessel_name}</td><td style={{color:v.avg_power_deviation_pct>10?'#ef4444':v.avg_power_deviation_pct>5?'#eab308':'#22c55e'}}>{v.avg_power_deviation_pct?.toFixed(1)}%</td><td>{v.hull_performance_index?.toFixed(1)}</td><td><span className={`badge ${v.fouling_level==='clean'?'badge-success':v.fouling_level==='moderate'?'badge-warning':'badge-danger'}`}>{v.fouling_level}</span></td><td>{v.data_points}</td></tr>)}</tbody></table>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="page">
+      <h2>Speed-Power Analysis</h2>
+      <div style={{marginBottom:16}}><select value={vessel} onChange={e=>setVessel(+e.target.value)} style={{background:'#1e293b',color:'#e2e8f0',border:'1px solid #334155',borderRadius:6,padding:'6px 12px'}}>
+        <option value={0}>Fleet (All Vessels)</option>
+        {(vessels?.vessels||[]).map(v=><option key={v.vessel_id} value={v.vessel_id}>{v.vessel_name}</option>)}
+      </select></div>
+      <div className="card"><h3>Speed vs Power — Actual vs Reference</h3><div className="chart-container"><canvas ref={ref}/></div></div>
+      {data?.speed_power_average?.length>0&&<div className="card" style={{marginTop:16}}>
+        <h3>Deviation by Speed</h3>
+        <table><thead><tr><th>Speed (kn)</th><th>Actual (kW)</th><th>Reference (kW)</th><th>Deviation</th><th>Samples</th></tr></thead><tbody>
+          {data.speed_power_average.map(p=>(<tr key={p.speed_kn}><td>{p.speed_kn}</td><td>{p.avg_actual_power_kw}</td><td>{p.reference_power_kw}</td><td style={{color:p.deviation_pct>5?'#ef4444':p.deviation_pct>0?'#eab308':'#22c55e'}}>{p.deviation_pct>0?'+':''}{p.deviation_pct}%</td><td>{p.sample_count}</td></tr>))}
+        </tbody></table>
+      </div>}
+    </div>
+  );
+}
+
+function TrimAnalysis() {
+  const [data,setData]=useState(null);
+  const [vessel,setVessel]=useState(0);
+  const [fleetData,setFleetData]=useState(null);
+  const [loading,setLoading]=useState(true);
+  const ref=React.useRef(null);
+  const {data:vessels}=useAPI('/vessels/',[]);
+  useEffect(()=>{
+    if(vessel===0){
+      setLoading(true);
+      fetch('/api/hull/fleet-comparison').then(r=>r.json()).then(d=>{setFleetData(d);setLoading(false)}).catch(()=>setLoading(false));
+    } else {
+      setLoading(true);setFleetData(null);
+      fetch(`/api/hull/trim/${vessel}`).then(r=>r.json()).then(d=>{setData(d);setLoading(false)}).catch(()=>setLoading(false));
+    }
+  },[vessel]);
+  useEffect(()=>{
+    if(!ref.current||vessel===0||!data?.trim_analysis?.length)return;
+    const d=data.trim_analysis;
+    const colors=d.map(t=>t.trim_m===data.optimal_trim_m?'#22c55e':t.avg_power_deviation_pct>5?'#ef4444':'#3b82f6');
+    const chart=new Chart(ref.current,{type:'bar',data:{labels:d.map(t=>`${t.trim_m>0?'+':''}${t.trim_m}m`),datasets:[{label:'Avg Power Deviation %',data:d.map(t=>t.avg_power_deviation_pct),backgroundColor:colors}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#94a3b8'}},title:{display:true,text:`Optimal Trim: ${data.optimal_trim_m>0?'+':''}${data.optimal_trim_m}m`,color:'#22c55e',font:{size:14}}},scales:{x:{ticks:{color:'#94a3b8'},grid:{color:'#1e293b'}},y:{title:{display:true,text:'Power Deviation %',color:'#94a3b8'},ticks:{color:'#94a3b8'},grid:{color:'#1e293b'}}}}});
+    return()=>chart.destroy();
+  },[data,vessel]);
+  if(loading) return <Loading/>;
+  if(vessel===0&&fleetData){
+    const fv=fleetData.vessels||[];
+    return (
+      <div className="page">
+        <h2>Trim Optimization</h2>
+        <div style={{marginBottom:16}}><select value={vessel} onChange={e=>setVessel(+e.target.value)} style={{background:'#1e293b',color:'#e2e8f0',border:'1px solid #334155',borderRadius:6,padding:'6px 12px'}}>
+          <option value={0}>Fleet (All Vessels)</option>
+          {(vessels?.vessels||[]).map(v=><option key={v.vessel_id} value={v.vessel_id}>{v.vessel_name}</option>)}
+        </select></div>
+        <div className="card"><h3>Fleet Power Efficiency (Proxy for Trim Impact)</h3>
+          <p style={{fontSize:12,color:'#94a3b8',marginBottom:12}}>Lower power deviation = better trim optimization</p>
+          <table><thead><tr><th>Vessel</th><th>Power Dev%</th><th>HPI</th><th>Roughness</th><th>Fouling</th></tr></thead>
+          <tbody>{fv.map((v,i)=><tr key={i}><td>{v.vessel_name}</td><td style={{color:v.avg_power_deviation_pct>10?'#ef4444':v.avg_power_deviation_pct>5?'#eab308':'#22c55e'}}>{v.avg_power_deviation_pct?.toFixed(1)}%</td><td>{v.hull_performance_index?.toFixed(1)}</td><td>{v.avg_roughness_mm?.toFixed(3)} mm</td><td><span className={`badge ${v.fouling_level==='clean'?'badge-success':v.fouling_level==='moderate'?'badge-warning':'badge-danger'}`}>{v.fouling_level}</span></td></tr>)}</tbody></table>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="page">
+      <h2>Trim Optimization</h2>
+      <div style={{marginBottom:16}}><select value={vessel} onChange={e=>setVessel(+e.target.value)} style={{background:'#1e293b',color:'#e2e8f0',border:'1px solid #334155',borderRadius:6,padding:'6px 12px'}}>
+        <option value={0}>Fleet (All Vessels)</option>
+        {(vessels?.vessels||[]).map(v=><option key={v.vessel_id} value={v.vessel_id}>{v.vessel_name}</option>)}
+      </select></div>
+      <div className="cards cards-4">
+        <div className="card kpi"><div className="kpi-label">Current Trim</div><div className="kpi-value">{data?.current_trim_m>0?'+':''}{data?.current_trim_m??'—'}m</div></div>
+        <div className="card kpi"><div className="kpi-label">Optimal Trim</div><div className="kpi-value" style={{color:'#22c55e'}}>{data?.optimal_trim_m>0?'+':''}{data?.optimal_trim_m??'—'}m</div></div>
+        <div className="card kpi"><div className="kpi-label">Potential Savings</div><div className="kpi-value" style={{color:data?.potential_savings_pct>0?'#22c55e':'#94a3b8'}}>{data?.potential_savings_pct>0?'+':''}{data?.potential_savings_pct??'—'}%</div></div>
+        <div className="card kpi"><div className="kpi-label">Recommendation</div><div style={{fontSize:12,color:'#94a3b8',lineHeight:1.4}}>{data?.recommendation?.slice(0,60)||'—'}</div></div>
+      </div>
+      <div className="card"><h3>Power Deviation by Trim</h3><div className="chart-container"><canvas ref={ref}/></div></div>
+    </div>
+  );
+}
+
+function FleetHullRanking() {
+  const [data,setData]=useState(null);
+  const [loading,setLoading]=useState(true);
+  useEffect(()=>{fetch('/api/hull/fleet-comparison').then(r=>r.json()).then(d=>{setData(d);setLoading(false)}).catch(()=>setLoading(false))},[]);
+  if(loading) return <Loading/>;
+  return (
+    <div className="page">
+      <h2>Fleet Hull Ranking</h2>
+      <div className="cards cards-3">
+        <div className="card kpi"><div className="kpi-label">Fleet Avg HPI</div><div className="kpi-value">{data?.fleet_avg_hpi??'—'}</div></div>
+        <div className="card kpi"><div className="kpi-label">Fleet Avg Deviation</div><div className="kpi-value">{data?.fleet_avg_deviation_pct??'—'}%</div></div>
+        <div className="card kpi"><div className="kpi-label">Vessels Needing Cleaning</div><div className="kpi-value" style={{color:data?.vessels_needing_cleaning>0?'#ef4444':'#22c55e'}}>{data?.vessels_needing_cleaning??0}</div></div>
+      </div>
+      <div className="card">
+        <table><thead><tr><th>Rank</th><th>Vessel</th><th>HPI</th><th>Power Dev</th><th>Roughness</th><th>QPC</th><th>Fouling</th></tr></thead><tbody>
+          {(data?.vessels||[]).map(v=>(<tr key={v.vessel_id}>
+            <td><span className={`badge badge-${v.rank<=2?'success':v.rank<=4?'warning':'danger'}`}>#{v.rank}</span></td>
+            <td>{v.vessel_name}</td>
+            <td style={{color:v.hull_performance_index>=70?'#22c55e':v.hull_performance_index>=50?'#eab308':'#ef4444',fontWeight:600}}>{v.hull_performance_index}</td>
+            <td style={{color:v.avg_power_deviation_pct>5?'#ef4444':'#22c55e'}}>{v.avg_power_deviation_pct}%</td>
+            <td>{v.avg_roughness_mm} mm</td>
+            <td>{v.avg_qpc}</td>
+            <td><span className={`badge badge-${v.fouling_level==='clean'?'success':v.fouling_level==='light'?'warning':'danger'}`}>{v.fouling_level}</span></td>
+          </tr>))}
+        </tbody></table>
+      </div>
+    </div>
+  );
+}
+
+// ─── App Router ───
+function App() {
+  const [page, setPage] = useState('dashboard');
+  const nav = [
+    {group:'Operations',items:[
+      {id:'dashboard',label:'Dashboard'},
+      {id:'vessels',label:'Fleet'},
+      {id:'voyages',label:'Voyages'},
+    ]},
+    {group:'Technical',items:[
+      {id:'hulloverview',label:'Hull Overview'},
+      {id:'speedpower',label:'Speed-Power'},
+      {id:'trimanalysis',label:'Trim Optimization'},
+      {id:'fleethull',label:'Fleet Hull Ranking'},
+      {id:'eca',label:'ECA & Emissions'},
+      {id:'digitaltwin',label:'Digital Twin'},
+    ]},
+    {group:'Compliance',items:[
+      {id:'cii',label:'CII'},
+      {id:'eexi',label:'EEXI & EPL'},
+      {id:'euets',label:'EU ETS'},
+      {id:'fueleu',label:'FuelEU Maritime'},
+      {id:'certificates',label:'Certificates'},
+      {id:'seemp',label:'SEEMP Part III'},
+    ]},
+    {group:'Analytics',items:[
+      {id:'fleetanalytics',label:'Fleet Analytics'},
+    ]},
+    {group:'Charterer',items:[
+      {id:'voyagepnl',label:'Voyage P&L'},
+      {id:'cpcompliance',label:'CP Compliance'},
+      {id:'bunkercosts',label:'Bunker Costs'},
+      {id:'bogimpact',label:'BOG Impact'},
+      {id:'offhiredisk',label:'Off-Hire Risk'},
+      {id:'carboncost',label:'Carbon Cost'},
+      {id:'utilization',label:'Fleet Utilization'},
+      {id:'voyagecompare',label:'Voyage Compare'},
+      {id:'benchmark',label:'Market Benchmark'},
+      {id:'laytime',label:'Laytime'},
+    ]},
+  ];
+  const pages = {dashboard:Dashboard,vessels:Vessels,voyages:Voyages,hulloverview:HullOverview,speedpower:SpeedPower,trimanalysis:TrimAnalysis,fleethull:FleetHullRanking,cii:CIICompliance,eexi:EEXI,euets:EUEts,fueleu:FuelEU,eca:ECAEmissions,certificates:Certificates,seemp:SEEMP,digitaltwin:DigitalTwin,fleetanalytics:FleetAnalytics,voyagepnl:VoyagePnl,cpcompliance:CpCompliance,bunkercosts:BunkerCosts,bogimpact:BogImpact,offhiredisk:OffHireRisk,carboncost:CarbonCost,utilization:Utilization,voyagecompare:VoyageCompare,benchmark:Benchmark,laytime:Laytime};
+  const Page = pages[page] || Dashboard;
+  return (
+    <div className="app">
+      <nav className="sidebar">
+        <h2>LNG Fleet</h2>
+        <div className="logo">Performance Management</div>
+        {nav.map(g => <div key={g.group}>
+          <div className="nav-group">{g.group}</div>
+          {g.items.map(item => <div key={item.id} className={`nav-item ${page===item.id?'active':''}`} onClick={()=>setPage(item.id)}>{item.label}</div>)}
+        </div>)}
+      </nav>
+      <main className="main"><Page key={page}/></main>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

@@ -42,19 +42,31 @@ app.include_router(charterer.router, prefix="/api/charterer", tags=["Charterer A
 
 @app.on_event("startup")
 async def startup():
-    db = get_db()
-    create_all_tables(db)
-    init_modules()
+    import logging
+    log = logging.getLogger("uvicorn.error")
+    try:
+        db = get_db()
+        create_all_tables(db)
+        init_modules()
+        log.info("Database and modules initialized successfully")
+    except Exception as e:
+        log.warning(f"Database init warning: {e} — continuing without main DB")
 
-    # Serve frontend static files in production
     frontend_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "build")
-    if os.path.exists(os.path.join(frontend_dir, "index.html")):
+    index_path = os.path.join(frontend_dir, "index.html")
+    log.info(f"Frontend path: {index_path} (exists={os.path.exists(index_path)})")
+    if os.path.exists(index_path):
         @app.get("/{full_path:path}")
         async def serve_frontend(full_path: str):
             file_path = os.path.join(frontend_dir, full_path)
             if os.path.isfile(file_path):
                 return FileResponse(file_path)
-            return FileResponse(os.path.join(frontend_dir, "index.html"))
+            return FileResponse(index_path)
+    else:
+        log.warning("Frontend build not found — API-only mode")
+        @app.get("/{full_path:path}")
+        async def serve_api_root(full_path: str):
+            return {"message": "LNG Fleet Performance API", "docs": "/docs", "health": "/api/health"}
 
 
 @app.get("/api/health")
