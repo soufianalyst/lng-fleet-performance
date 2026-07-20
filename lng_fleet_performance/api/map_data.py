@@ -64,7 +64,10 @@ def _interpolate_route(waypoints, progress_pct):
 
 @router.get("/fleet-positions")
 async def fleet_positions(vessel_id: int = None):
-    db = get_db()
+    try:
+        db = get_db()
+    except Exception as e:
+        return {"positions": [], "count": 0, "error": str(e)}
     
     # Get all vessels if no vessel_id is specified
     if not vessel_id:

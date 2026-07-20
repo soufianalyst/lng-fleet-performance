@@ -47,6 +47,10 @@ async def startup():
     try:
         db = get_db()
         create_all_tables(db)
+
+        from ..demo.seed_render import seed_if_empty
+        seed_if_empty(db)
+
         init_modules()
         log.info("Database and modules initialized successfully")
     except Exception as e:
@@ -89,7 +93,7 @@ async def dashboard():
     cii_latest = db.fetchall(
         """SELECT c.*, v.vessel_name FROM cii_assessment c
            JOIN vessels v ON c.vessel_id = v.vessel_id
-           WHERE c.assessment_year = strftime('%Y', 'now')
+           WHERE c.assessment_year = 2025
            ORDER BY c.cii_calculated""")
     cert_alerts = db.fetchall(
         """SELECT * FROM certificates WHERE status='active'
