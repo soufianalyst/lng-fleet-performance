@@ -86,48 +86,6 @@ async def health():
     ]}
 
 
-@app.get("/api/debug")
-async def debug():
-    import traceback as tb
-    results = {}
-    db = get_db()
-    try:
-        results["db_type"] = "postgresql" if os.environ.get("DATABASE_URL") else "sqlite"
-        row = db.fetchone("SELECT COUNT(*) as cnt FROM vessels")
-        results["vessels"] = dict(row).get("cnt", 0) if row else 0
-    except Exception as e:
-        results["vessels_error"] = str(e)
-    try:
-        row = db.fetchone("SELECT COUNT(*) as cnt FROM voyages")
-        results["voyages"] = dict(row).get("cnt", 0) if row else 0
-    except Exception as e:
-        results["voyages_error"] = str(e)
-    try:
-        row = db.fetchone("SELECT COUNT(*) as cnt FROM cii_assessment")
-        results["cii"] = dict(row).get("cnt", 0) if row else 0
-    except Exception as e:
-        results["cii_error"] = str(e)
-    try:
-        row = db.fetchone("SELECT COUNT(*) as cnt FROM certificates")
-        results["certificates"] = dict(row).get("cnt", 0) if row else 0
-    except Exception as e:
-        results["certificates_error"] = str(e)
-    try:
-        row = db.fetchone("SELECT COUNT(*) as cnt FROM hull_performance")
-        results["hull"] = dict(row).get("cnt", 0) if row else 0
-    except Exception as e:
-        results["hull_error"] = str(e)
-    try:
-        adb = None
-        from .deps import _analytics_db as cached_adb
-        if cached_adb is not None:
-            results["analytics_type"] = "cached"
-        results["analytics_db_url"] = bool(os.environ.get("DATABASE_URL"))
-    except Exception as e:
-        results["analytics_error"] = str(e)
-    return results
-
-
 @app.get("/api/dashboard")
 async def dashboard():
     db = get_db()
