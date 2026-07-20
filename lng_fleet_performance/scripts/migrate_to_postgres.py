@@ -164,7 +164,7 @@ def main():
         print("Usage: DATABASE_URL='postgresql://...' python scripts/migrate_to_postgres.py")
         sys.exit(1)
 
-    sqlite_path = os.path.join(os.path.dirname(__file__), "..", "lng-data-generator", "output", "lng_fleet_analytics.db")
+    sqlite_path = os.path.join(os.path.dirname(__file__), "..", "..", "lng-data-generator", "output", "lng_fleet_analytics.db")
     if not os.path.exists(sqlite_path):
         print(f"ERROR: SQLite analytics DB not found at {sqlite_path}")
         sys.exit(1)
