@@ -17,24 +17,26 @@ _ANALYTICS_CONN = None
 
 def translate_sql_for_pg(query):
     """Translate SQLite-specific SQL functions to PostgreSQL equivalents."""
-    # strftime('%Y-%m', expr) → TO_CHAR(expr, 'YYYY-MM')
-    query = re.sub(r"strftime\('%Y-%m',\s*([^)]+)\)", r"TO_CHAR(\1, 'YYYY-MM')", query)
-    # strftime('%Y', expr) → TO_CHAR(expr, 'YYYY')
-    query = re.sub(r"strftime\('%Y',\s*([^)]+)\)", r"TO_CHAR(\1, 'YYYY')", query)
-    # strftime('%m', expr) → EXTRACT(MONTH FROM expr)
-    query = re.sub(r"strftime\('%m',\s*([^)]+)\)", r"EXTRACT(MONTH FROM \1)", query)
-    # date(expr, '-N days') → (expr) - INTERVAL 'N days'
-    # date(expr, '+N days') → (expr) + INTERVAL 'N days'
+    # strftime('%Y-%m', expr) → TO_CHAR(expr::date, 'YYYY-MM')
+    query = re.sub(r"strftime\('%Y-%m',\s*([^)]+)\)", r"TO_CHAR(\1::date, 'YYYY-MM')", query)
+    # strftime('%Y', expr) → TO_CHAR(expr::date, 'YYYY')
+    query = re.sub(r"strftime\('%Y',\s*([^)]+)\)", r"TO_CHAR(\1::date, 'YYYY')", query)
+    # strftime('%m', expr) → EXTRACT(MONTH FROM expr::date)
+    query = re.sub(r"strftime\('%m',\s*([^)]+)\)", r"EXTRACT(MONTH FROM \1::date)", query)
+    # date('now') → CURRENT_DATE (before single-arg date() regex)
+    query = query.replace("date('now')", "CURRENT_DATE")
+    # date(expr, '-N days') → (expr::date) - INTERVAL 'N days'
+    # date(expr, '+N days') → (expr::date) + INTERVAL 'N days'
     def _replace_date(m):
         expr = m.group(1)
         sign = m.group(2)
         amount = m.group(3)
         unit = m.group(4)
         op = '-' if sign == '-' else '+'
-        return f"({expr}) {op} INTERVAL '{amount} {unit}'"
+        return f"({expr}::date) {op} INTERVAL '{amount} {unit}'"
     query = re.sub(r"date\(([^,]+),\s*'([+-])(\d+)\s+(day|days)'\)", _replace_date, query)
-    # date('now') → CURRENT_DATE
-    query = query.replace("date('now')", "CURRENT_DATE")
+    # date(expr) → expr::date (single-arg date(), but not date('now') which is already replaced)
+    query = re.sub(r"\bdate\(([^')]+)\)", r"(\1)::date", query)
     return query
 
 SQLITE_PATHS = [
