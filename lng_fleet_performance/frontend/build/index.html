@@ -28,7 +28,7 @@ body{font-family:'Inter',sans-serif;background:#0f172a;color:#e2e8f0;min-height:
 .cards-3{grid-template-columns:repeat(3,1fr)}
 .cards-4{grid-template-columns:repeat(4,1fr)}
 .cards-5{grid-template-columns:repeat(5,1fr)}
-.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;overflow-x:auto}
 .card h3{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
 .card .value{font-size:28px;font-weight:700}
 .card .sub{font-size:12px;color:var(--muted);margin-top:4px}
@@ -56,7 +56,7 @@ tr:hover{background:rgba(59,130,246,0.04)}
 .dot-green{background:var(--success)}
 .dot-yellow{background:var(--warning)}
 .dot-red{background:var(--danger)}
-#fleet-map-container{height:500px;border-radius:12px;overflow:hidden;border:1px solid var(--border);margin-bottom:16px;background:#0c1220}
+#fleet-map-container{height:500px;border-radius:12px;overflow:hidden;border:1px solid var(--border);margin-bottom:16px;background:#0c1220;width:100%}
 .map-legend{display:flex;gap:16px;padding:12px 16px;background:var(--card);border:1px solid var(--border);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--muted);flex-wrap:wrap;align-items:center}
 .map-legend .legend-item{display:flex;align-items:center;gap:6px}
 .map-legend .legend-line{width:24px;height:3px;border-radius:2px}
@@ -71,8 +71,12 @@ tr:hover{background:rgba(59,130,246,0.04)}
 .kpi{text-align:center}
 .kpi-label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
 .kpi-value{font-size:28px;font-weight:700}
-@media(max-width:1200px){.cards-4,.cards-5{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:768px){.sidebar{display:none}.main{margin-left:0}}
+.hamburger{display:none;position:fixed;top:12px;left:12px;z-index:1100;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 12px;cursor:pointer;color:var(--text);font-size:18px}
+.sidebar-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:999}
+.table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+@media(max-width:1200px){.cards-4,.cards-5{grid-template-columns:repeat(2,1fr)}.cards-3{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:992px){.grid-2,.grid-3{grid-template-columns:1fr}.cards-3{grid-template-columns:1fr}.cards-4,.cards-5{grid-template-columns:repeat(2,1fr)}.page-header h1{font-size:20px}.card .value{font-size:22px}.kpi-value{font-size:28px}.gauge-value{font-size:28px}}
+@media(max-width:768px){.hamburger{display:block}.sidebar{transform:translateX(-100%);transition:transform .25s ease;z-index:1000}.sidebar.open{transform:translateX(0)}.sidebar-overlay.open{display:block}.main{margin-left:0;padding:16px;padding-top:56px}.cards-2,.cards-3,.cards-4,.cards-5{grid-template-columns:1fr}.grid-2,.grid-3{grid-template-columns:1fr}.page-header h1{font-size:18px}.page-header p{font-size:12px}.card .value{font-size:20px}.kpi-value{font-size:24px}.gauge-value{font-size:24px}.card{padding:16px}#fleet-map-container{height:300px}.chart-container{height:250px}table{font-size:12px}th,td{padding:8px 10px}.map-legend{flex-direction:column;gap:8px}.nav-item{padding:10px 20px;font-size:14px}.btn{padding:10px 16px;font-size:14px;min-height:44px}.btn select{min-height:44px}}
 </style>
 </head>
 <body>
@@ -1512,6 +1516,7 @@ function FleetHullRanking() {
 // ─── App Router ───
 function App() {
   const [page, setPage] = useState('dashboard');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const nav = [
     {group:'Operations',items:[
       {id:'dashboard',label:'Dashboard'},
@@ -1554,12 +1559,14 @@ function App() {
   const Page = pages[page] || Dashboard;
   return (
     <div className="app">
-      <nav className="sidebar">
+      <button className="hamburger" onClick={()=>setSidebarOpen(!sidebarOpen)}>{sidebarOpen?'\u2715':'\u2630'}</button>
+      <div className={`sidebar-overlay ${sidebarOpen?'open':''}`} onClick={()=>setSidebarOpen(false)}/>
+      <nav className={`sidebar ${sidebarOpen?'open':''}`}>
         <h2>LNG Fleet</h2>
         <div className="logo">Performance Management</div>
         {nav.map(g => <div key={g.group}>
           <div className="nav-group">{g.group}</div>
-          {g.items.map(item => <div key={item.id} className={`nav-item ${page===item.id?'active':''}`} onClick={()=>setPage(item.id)}>{item.label}</div>)}
+          {g.items.map(item => <div key={item.id} className={`nav-item ${page===item.id?'active':''}`} onClick={()=>{setPage(item.id);setSidebarOpen(false)}}>{item.label}</div>)}
         </div>)}
       </nav>
       <main className="main"><Page key={page}/></main>
