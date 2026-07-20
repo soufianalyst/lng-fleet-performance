@@ -1,0 +1,47 @@
+# Go
+vendor/
+*.exe
+*.test
+*.out
+go.work
+
+# Rust
+edge/target/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+ml/models/*.joblib
+ml/models/*.pth
+ml/data/*.png
+
+# Node
+node_modules/
+frontend/dist/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.env.prod
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Generated data
+synthetic-data-generator/output/
+
+# Docker
+docker-compose.override.yml
+
+# Logs
+*.log

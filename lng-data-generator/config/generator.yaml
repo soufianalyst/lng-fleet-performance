@@ -1,0 +1,171 @@
+generator:
+  # Simulation timestep in seconds
+  timestep_seconds: 30
+
+  # How to generate data
+  mode: scenario   # continuous, scenario, replay
+
+  # Continuous mode settings
+  continuous:
+    duration_days: 30
+    vessels: all  # or list of vessel IDs
+
+  # Scenario mode settings
+  scenario:
+    name: normal_voyage
+    vessels:
+      - id: LNG-001
+        scenario: heavy_weather
+        start_day: 0
+      - id: LNG-002
+        scenario: normal_voyage
+        start_day: 0
+      - id: LNG-003
+        scenario: engine_failure
+        start_day: 5
+      - id: LNG-004
+        scenario: cargo_loading
+        start_day: 0
+      - id: LNG-005
+        scenario: normal_voyage
+        start_day: 0
+
+  # Output settings
+  output:
+    formats: [csv, sqlite]
+    directory: output
+    sqlite_db: lng_telemetry.db
+    csv_chunk_size: 10000
+
+  # Performance
+  max_vessels_parallel: 5
+  write_buffer_size: 50000
+
+scenarios:
+  normal_voyage:
+    description: Normal sea passage with occasional weather
+    phases:
+      - name: departure
+        duration_hours: 4
+        phases: [port_stay, departure]
+      - name: sea_passage
+        duration_pct: 85
+        phases: [sea_passage]
+      - name: arrival
+        duration_hours: 6
+        phases: [approach, port_stay]
+
+  heavy_weather:
+    description: Storm encounter during passage
+    phases:
+      - name: departure
+        duration_hours: 4
+        phases: [port_stay, departure]
+      - name: sea_passage
+        duration_pct: 40
+        phases: [sea_passage]
+      - name: storm
+        duration_hours: 12
+        phases: [heavy_weather]
+      - name: recovery
+        duration_pct: 40
+        phases: [sea_passage]
+      - name: arrival
+        duration_hours: 6
+        phases: [approach, port_stay]
+
+  engine_failure:
+    description: Main engine trip and restart
+    phases:
+      - name: departure
+        duration_hours: 4
+        phases: [port_stay, departure]
+      - name: sea_passage
+        duration_pct: 30
+        phases: [sea_passage]
+      - name: failure
+        duration_hours: 8
+        phases: [engine_failure]
+      - name: restart
+        duration_hours: 4
+        phases: [engine_restart]
+      - name: sea_passage
+        duration_pct: 30
+        phases: [sea_passage]
+      - name: arrival
+        duration_hours: 6
+        phases: [approach, port_stay]
+
+  cargo_loading:
+    description: Full cargo loading operation
+    phases:
+      - name: arrival
+        duration_hours: 6
+        phases: [approach, anchorage]
+      - name: berthing
+        duration_hours: 3
+        phases: [berthing]
+      - name: loading
+        duration_hours: 18
+        phases: [cargo_loading]
+      - name: departure
+        duration_hours: 4
+        phases: [departure]
+      - name: sea_passage
+        duration_pct: 80
+        phases: [sea_passage]
+
+  reliq_failure:
+    description: Reliquefaction system failure
+    phases:
+      - name: sea_passage
+        duration_pct: 50
+        phases: [sea_passage]
+      - name: failure
+        duration_hours: 12
+        phases: [reliq_failure]
+      - name: sea_passage
+        duration_pct: 40
+        phases: [sea_passage]
+
+  generator_failure:
+    description: Auxiliary generator trip
+    phases:
+      - name: sea_passage
+        duration_pct: 40
+        phases: [sea_passage]
+      - name: failure
+        duration_hours: 6
+        phases: [generator_failure]
+      - name: sea_passage
+        duration_pct: 50
+        phases: [sea_passage]
+
+  canal_transit:
+    description: Suez Canal transit
+    phases:
+      - name: waiting
+        duration_hours: 8
+        phases: [anchorage]
+      - name: transit
+        duration_hours: 16
+        phases: [canal_transit]
+      - name: sea_passage
+        duration_pct: 70
+        phases: [sea_passage]
+
+  emergency_stop:
+    description: Emergency stop and recovery
+    phases:
+      - name: sea_passage
+        duration_pct: 50
+        phases: [sea_passage]
+      - name: emergency
+        duration_hours: 2
+        phases: [emergency_stop]
+      - name: recovery
+        duration_hours: 6
+        phases: [engine_restart]
+      - name: sea_passage
+        duration_pct: 30
+        phases: [sea_passage]

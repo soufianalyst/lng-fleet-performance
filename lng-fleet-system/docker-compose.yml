@@ -1,0 +1,101 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: timescale/timescaledb:latest-pg16
+    environment:
+      POSTGRES_DB: lngfleet
+      POSTGRES_USER: lngfleet
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-lngfleet_dev}
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lngfleet"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    ports:
+      - "9092:9092"
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    ports:
+      - "2181:2181"
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: deploy/docker/api-gateway.Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      DB_URL: postgres://lngfleet:lngfleet_dev@postgres:5432/lngfleet?sslmode=disable
+      REDIS_URL: redis://redis:6379
+      KAFKA_BROKERS: kafka:9092
+
+  synthetic-data-gen:
+    build:
+      context: .
+      dockerfile: deploy/docker/synthetic-data.Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    environment:
+      DB_URL: postgres://lngfleet:lngfleet_dev@postgres:5432/lngfleet
+      KAFKA_BROKERS: kafka:9092
+    profiles:
+      - data-gen
+
+  ml-pipeline:
+    build:
+      context: .
+      dockerfile: deploy/docker/ml-pipeline.Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_URL: postgres://lngfleet:lngfleet_dev@postgres:5432/lngfleet
+    profiles:
+      - ml
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../deploy/docker/frontend.Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - api-gateway
+
+volumes:
+  postgres_data:
+  redis_data:

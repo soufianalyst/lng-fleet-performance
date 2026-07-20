@@ -1,0 +1,42 @@
+# Databases
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Raw data (too large for git)
+lng-data-generator/output/
+lng-data-generator/config/vessels.yaml
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Server logs
+/tmp/
+*.log
+nohup.out
+
+# Backup files
+*.backup
+*_backup*

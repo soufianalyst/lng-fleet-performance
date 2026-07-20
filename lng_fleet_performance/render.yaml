@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: lng-fleet-performance
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn lng_fleet_performance.api.app:app --workers 2 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: lng-analytics-db
+          property: connectionString
+      - key: PYTHON_VERSION
+        value: "3.12"
+
+databases:
+  - name: lng-analytics-db
+    plan: free
+    databaseName: lng_analytics

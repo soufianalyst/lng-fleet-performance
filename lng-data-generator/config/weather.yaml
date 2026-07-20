@@ -1,0 +1,62 @@
+weather:
+  # Base conditions by region
+  regions:
+    tropics:
+      lat_range: [-23.5, 23.5]
+      sea_temp_c: 28.0
+      air_temp_c: 30.0
+      wind_mean_kn: 10
+      wind_std_kn: 5
+      wave_mean_m: 1.2
+      visibility_nm: 10
+      storm_probability: 0.02
+
+    temperate:
+      lat_range: [23.5, 60]
+      sea_temp_c: 18.0
+      air_temp_c: 15.0
+      wind_mean_kn: 14
+      wind_std_kn: 8
+      wave_mean_m: 2.0
+      visibility_nm: 8
+      storm_probability: 0.05
+
+    polar:
+      lat_range: [60, 90]
+      sea_temp_c: 5.0
+      air_temp_c: 2.0
+      wind_mean_kn: 18
+      wind_std_kn: 10
+      wave_mean_m: 3.0
+      visibility_nm: 5
+      storm_probability: 0.08
+
+    southern_temperate:
+      lat_range: [-60, -23.5]
+      sea_temp_c: 16.0
+      air_temp_c: 13.0
+      wind_mean_kn: 16
+      wind_std_kn: 9
+      wave_mean_m: 2.5
+      visibility_nm: 7
+      storm_probability: 0.06
+
+  # Storm parameters
+  storm:
+    wind_multiplier: 3.5
+    wave_multiplier: 4.0
+    duration_hours: 8
+    ramp_up_hours: 3
+    ramp_down_hours: 5
+
+  # Autocorrelation (higher = smoother transitions)
+  autocorrelation:
+    wind: 0.95
+    wave: 0.97
+    swell: 0.98
+    temperature: 0.999
+    pressure: 0.998
+    visibility: 0.93
+
+  # Sampling period in seconds
+  update_interval_seconds: 300

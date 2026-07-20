@@ -1,0 +1,808 @@
+routes:
+- id: ROUTE-001
+  name: Ras Laffan to Gate Terminal
+  load_port:
+    name: Ras Laffan
+    lat: 25.93
+    lon: 51.56
+  discharge_port:
+    name: Gate Terminal
+    lat: 51.9
+    lon: 4.02
+  distance_nm: 6917
+  waypoints:
+  - lat: 25.93
+    lon: 51.56
+  - lat: 26.5
+    lon: 56.8
+  - lat: 24.5
+    lon: 59.5
+  - lat: 15.0
+    lon: 65.0
+  - lat: 12.6
+    lon: 43.3
+  - lat: 20.0
+    lon: 38.5
+  - lat: 29.5
+    lon: 32.5
+  - lat: 31.5
+    lon: 32.3
+  - lat: 33.5
+    lon: 30.0
+  - lat: 36.5
+    lon: 15.0
+  - lat: 37.5
+    lon: 4.0
+  - lat: 35.9
+    lon: -5.7
+  - lat: 43.5
+    lon: -9.5
+  - lat: 49.5
+    lon: -3.0
+  - lat: 51.0
+    lon: 1.8
+  - lat: 52.2
+    lon: 3.5
+  - lat: 51.9
+    lon: 4.02
+  eca_zones:
+  - NORTH_SEA_ECA
+- id: ROUTE-002
+  name: Ras Laffan to Chiba
+  load_port:
+    name: Ras Laffan
+    lat: 25.93
+    lon: 51.56
+  discharge_port:
+    name: Chiba
+    lat: 35.61
+    lon: 140.11
+  distance_nm: 6850
+  waypoints:
+  - lat: 25.93
+    lon: 51.56
+  - lat: 26.5
+    lon: 56.8
+  - lat: 24.5
+    lon: 59.5
+  - lat: 12.0
+    lon: 62.0
+  - lat: 5.5
+    lon: 81.0
+  - lat: 5.5
+    lon: 96.0
+  - lat: 1.2
+    lon: 104.0
+  - lat: 12.0
+    lon: 112.0
+  - lat: 24.5
+    lon: 119.5
+  - lat: 28.0
+    lon: 125.0
+  - lat: 31.0
+    lon: 132.0
+  - lat: 35.0
+    lon: 140.5
+  - lat: 35.61
+    lon: 140.11
+  eca_zones: []
+- id: ROUTE-003
+  name: Ras Laffan to Dahej
+  load_port:
+    name: Ras Laffan
+    lat: 25.93
+    lon: 51.56
+  discharge_port:
+    name: Dahej
+    lat: 21.7
+    lon: 72.55
+  distance_nm: 1314
+  waypoints:
+  - lat: 25.93
+    lon: 51.56
+  - lat: 26.5
+    lon: 56.8
+  - lat: 24.5
+    lon: 59.5
+  - lat: 20.0
+    lon: 65.0
+  - lat: 21.7
+    lon: 72.55
+  eca_zones: []
+- id: ROUTE-004
+  name: Ras Laffan to Incheon
+  load_port:
+    name: Ras Laffan
+    lat: 25.93
+    lon: 51.56
+  discharge_port:
+    name: Incheon
+    lat: 37.46
+    lon: 126.62
+  distance_nm: 6572
+  waypoints:
+  - lat: 25.93
+    lon: 51.56
+  - lat: 26.5
+    lon: 56.8
+  - lat: 24.5
+    lon: 59.5
+  - lat: 12.0
+    lon: 62.0
+  - lat: 5.5
+    lon: 81.0
+  - lat: 5.5
+    lon: 96.0
+  - lat: 1.2
+    lon: 104.0
+  - lat: 12.0
+    lon: 112.0
+  - lat: 24.5
+    lon: 119.5
+  - lat: 28.0
+    lon: 125.0
+  - lat: 35.5
+    lon: 123.0
+  - lat: 37.3
+    lon: 126.3
+  - lat: 37.46
+    lon: 126.62
+  eca_zones: []
+- id: ROUTE-005
+  name: Sabine Pass to Zeebrugge
+  load_port:
+    name: Sabine Pass
+    lat: 29.73
+    lon: -93.86
+  discharge_port:
+    name: Zeebrugge
+    lat: 51.33
+    lon: 3.18
+  distance_nm: 5099
+  waypoints:
+  - lat: 29.73
+    lon: -93.86
+  - lat: 25.0
+    lon: -90.0
+  - lat: 24.5
+    lon: -81.5
+  - lat: 30.0
+    lon: -75.0
+  - lat: 35.0
+    lon: -60.0
+  - lat: 40.0
+    lon: -45.0
+  - lat: 45.0
+    lon: -30.0
+  - lat: 49.0
+    lon: -12.0
+  - lat: 49.5
+    lon: -3.0
+  - lat: 51.0
+    lon: 1.8
+  - lat: 51.35
+    lon: 3.2
+  eca_zones:
+  - NORTH_SEA_ECA
+  - NORTH_AMERICAN_ECA
+- id: ROUTE-006
+  name: Cameron LNG to Barcelona
+  load_port:
+    name: Cameron LNG
+    lat: 29.68
+    lon: -93.22
+  discharge_port:
+    name: Barcelona
+    lat: 41.39
+    lon: 2.17
+  distance_nm: 5563
+  waypoints:
+  - lat: 29.68
+    lon: -93.22
+  - lat: 25.0
+    lon: -90.0
+  - lat: 24.5
+    lon: -81.5
+  - lat: 30.0
+    lon: -75.0
+  - lat: 35.0
+    lon: -60.0
+  - lat: 40.0
+    lon: -40.0
+  - lat: 43.0
+    lon: -20.0
+  - lat: 35.9
+    lon: -5.7
+  - lat: 37.5
+    lon: 4.0
+  - lat: 41.39
+    lon: 2.17
+  eca_zones:
+  - NORTH_SEA_ECA
+  - NORTH_AMERICAN_ECA
+- id: ROUTE-007
+  name: Freeport to Ain Sukhna
+  load_port:
+    name: Freeport
+    lat: 28.95
+    lon: -95.26
+  discharge_port:
+    name: Ain Sukhna
+    lat: 29.6
+    lon: 32.34
+  distance_nm: 6920
+  waypoints:
+  - lat: 28.95
+    lon: -95.26
+  - lat: 25.0
+    lon: -90.0
+  - lat: 24.5
+    lon: -81.5
+  - lat: 30.0
+    lon: -75.0
+  - lat: 35.0
+    lon: -60.0
+  - lat: 40.0
+    lon: -40.0
+  - lat: 43.0
+    lon: -20.0
+  - lat: 35.9
+    lon: -5.7
+  - lat: 37.5
+    lon: 4.0
+  - lat: 36.5
+    lon: 15.0
+  - lat: 33.5
+    lon: 30.0
+  - lat: 31.5
+    lon: 32.3
+  - lat: 29.5
+    lon: 32.5
+  - lat: 29.6
+    lon: 32.34
+  eca_zones:
+  - NORTH_AMERICAN_ECA
+- id: ROUTE-008
+  name: Cove Point to Sines
+  load_port:
+    name: Cove Point
+    lat: 38.4
+    lon: -76.38
+  discharge_port:
+    name: Sines
+    lat: 37.95
+    lon: -8.87
+  distance_nm: 3240
+  waypoints:
+  - lat: 38.4
+    lon: -76.38
+  - lat: 37.0
+    lon: -70.0
+  - lat: 37.0
+    lon: -50.0
+  - lat: 37.0
+    lon: -30.0
+  - lat: 38.0
+    lon: -12.0
+  - lat: 37.95
+    lon: -8.87
+  eca_zones:
+  - NORTH_SEA_ECA
+  - NORTH_AMERICAN_ECA
+- id: ROUTE-009
+  name: Hammerfest to Gate Terminal
+  load_port:
+    name: Hammerfest
+    lat: 70.7
+    lon: 23.8
+  discharge_port:
+    name: Gate Terminal
+    lat: 51.9
+    lon: 4.02
+  distance_nm: 1278
+  waypoints:
+  - lat: 70.7
+    lon: 23.8
+  - lat: 69.0
+    lon: 17.0
+  - lat: 65.0
+    lon: 10.0
+  - lat: 60.0
+    lon: 4.5
+  - lat: 57.0
+    lon: 4.0
+  - lat: 53.5
+    lon: 3.8
+  - lat: 52.2
+    lon: 3.5
+  - lat: 51.9
+    lon: 4.02
+  eca_zones:
+  - NORTH_SEA_ECA
+- id: ROUTE-010
+  name: Hammerfest to Sines
+  load_port:
+    name: Hammerfest
+    lat: 70.7
+    lon: 23.8
+  discharge_port:
+    name: Sines
+    lat: 37.95
+    lon: -8.87
+  distance_nm: 2247
+  waypoints:
+  - lat: 70.7
+    lon: 23.8
+  - lat: 68.0
+    lon: 14.0
+  - lat: 65.0
+    lon: 10.0
+  - lat: 59.0
+    lon: 2.0
+  - lat: 53.0
+    lon: -3.0
+  - lat: 46.0
+    lon: -6.0
+  - lat: 43.0
+    lon: -9.5
+  - lat: 39.0
+    lon: -10.0
+  - lat: 37.95
+    lon: -8.87
+  eca_zones:
+  - NORTH_SEA_ECA
+- id: ROUTE-011
+  name: Darwin to Chiba
+  load_port:
+    name: Darwin
+    lat: -12.46
+    lon: 130.85
+  discharge_port:
+    name: Chiba
+    lat: 35.61
+    lon: 140.11
+  distance_nm: 3425
+  waypoints:
+  - lat: -12.46
+    lon: 130.85
+  - lat: -11.0
+    lon: 129.0
+  - lat: -8.0
+    lon: 128.0
+  - lat: -2.0
+    lon: 132.0
+  - lat: 5.0
+    lon: 135.0
+  - lat: 12.0
+    lon: 135.0
+  - lat: 20.0
+    lon: 135.0
+  - lat: 27.0
+    lon: 130.0
+  - lat: 31.0
+    lon: 132.0
+  - lat: 35.0
+    lon: 140.5
+  - lat: 35.61
+    lon: 140.11
+  eca_zones: []
+- id: ROUTE-012
+  name: Gladstone to Dapeng
+  load_port:
+    name: Gladstone
+    lat: -23.85
+    lon: 151.27
+  discharge_port:
+    name: Dapeng
+    lat: 22.47
+    lon: 114.5
+  distance_nm: 3755
+  waypoints:
+  - lat: -23.85
+    lon: 151.27
+  - lat: -15.0
+    lon: 152.0
+  - lat: -10.0
+    lon: 148.0
+  - lat: -5.0
+    lon: 140.0
+  - lat: 2.0
+    lon: 136.0
+  - lat: 10.0
+    lon: 130.0
+  - lat: 16.0
+    lon: 126.0
+  - lat: 20.0
+    lon: 121.0
+  - lat: 22.47
+    lon: 114.5
+  eca_zones: []
+- id: ROUTE-013
+  name: Ichthys to Incheon
+  load_port:
+    name: Ichthys
+    lat: -12.28
+    lon: 123.5
+  discharge_port:
+    name: Incheon
+    lat: 37.46
+    lon: 126.62
+  distance_nm: 3325
+  waypoints:
+  - lat: -12.28
+    lon: 123.5
+  - lat: -8.0
+    lon: 126.0
+  - lat: -2.0
+    lon: 130.0
+  - lat: 5.0
+    lon: 133.0
+  - lat: 12.0
+    lon: 132.0
+  - lat: 20.0
+    lon: 128.0
+  - lat: 28.0
+    lon: 125.0
+  - lat: 35.5
+    lon: 123.0
+  - lat: 37.3
+    lon: 126.3
+  - lat: 37.46
+    lon: 126.62
+  eca_zones: []
+- id: ROUTE-014
+  name: Bontang to Chiba
+  load_port:
+    name: Bontang
+    lat: 0.13
+    lon: 117.53
+  discharge_port:
+    name: Chiba
+    lat: 35.61
+    lon: 140.11
+  distance_nm: 2838
+  waypoints:
+  - lat: 0.13
+    lon: 117.53
+  - lat: 0.0
+    lon: 118.5
+  - lat: 5.0
+    lon: 122.0
+  - lat: 10.0
+    lon: 130.0
+  - lat: 15.0
+    lon: 132.0
+  - lat: 22.0
+    lon: 130.0
+  - lat: 31.0
+    lon: 132.0
+  - lat: 35.0
+    lon: 140.5
+  - lat: 35.61
+    lon: 140.11
+  eca_zones: []
+- id: ROUTE-015
+  name: Tangguh to Qingdao
+  load_port:
+    name: Tangguh
+    lat: -2.83
+    lon: 128.27
+  discharge_port:
+    name: Qingdao
+    lat: 36.07
+    lon: 120.38
+  distance_nm: 2776
+  waypoints:
+  - lat: -2.83
+    lon: 128.27
+  - lat: 2.0
+    lon: 130.0
+  - lat: 10.0
+    lon: 130.0
+  - lat: 15.0
+    lon: 128.0
+  - lat: 20.0
+    lon: 124.0
+  - lat: 24.5
+    lon: 119.5
+  - lat: 28.0
+    lon: 125.0
+  - lat: 32.0
+    lon: 123.5
+  - lat: 35.5
+    lon: 121.5
+  - lat: 36.07
+    lon: 120.38
+  eca_zones: []
+- id: ROUTE-016
+  name: MLNG to Chiba
+  load_port:
+    name: MLNG
+    lat: 4.39
+    lon: 113.98
+  discharge_port:
+    name: Chiba
+    lat: 35.61
+    lon: 140.11
+  distance_nm: 2598
+  waypoints:
+  - lat: 4.39
+    lon: 113.98
+  - lat: 8.0
+    lon: 112.0
+  - lat: 15.0
+    lon: 115.0
+  - lat: 20.0
+    lon: 120.5
+  - lat: 25.0
+    lon: 125.0
+  - lat: 30.0
+    lon: 130.0
+  - lat: 31.0
+    lon: 132.0
+  - lat: 35.0
+    lon: 140.5
+  - lat: 35.61
+    lon: 140.11
+  eca_zones: []
+- id: ROUTE-017
+  name: MLNG to Kaohsiung
+  load_port:
+    name: MLNG
+    lat: 4.39
+    lon: 113.98
+  discharge_port:
+    name: Kaohsiung
+    lat: 22.62
+    lon: 120.3
+  distance_nm: 1212
+  waypoints:
+  - lat: 4.39
+    lon: 113.98
+  - lat: 10.0
+    lon: 113.0
+  - lat: 16.0
+    lon: 116.0
+  - lat: 20.0
+    lon: 119.0
+  - lat: 22.62
+    lon: 120.3
+  eca_zones: []
+- id: ROUTE-018
+  name: Bonny Island to Sines
+  load_port:
+    name: Bonny Island
+    lat: 4.43
+    lon: 7.17
+  discharge_port:
+    name: Sines
+    lat: 37.95
+    lon: -8.87
+  distance_nm: 3279
+  waypoints:
+  - lat: 4.43
+    lon: 7.17
+  - lat: 0.0
+    lon: 0.0
+  - lat: 5.0
+    lon: -5.0
+  - lat: 12.0
+    lon: -12.0
+  - lat: 20.0
+    lon: -17.0
+  - lat: 28.0
+    lon: -16.0
+  - lat: 35.0
+    lon: -10.0
+  - lat: 37.95
+    lon: -8.87
+  eca_zones:
+  - NORTH_SEA_ECA
+- id: ROUTE-019
+  name: Bonny Island to Dunkirk
+  load_port:
+    name: Bonny Island
+    lat: 4.43
+    lon: 7.17
+  discharge_port:
+    name: Dunkirk
+    lat: 51.04
+    lon: 2.38
+  distance_nm: 4343
+  waypoints:
+  - lat: 4.43
+    lon: 7.17
+  - lat: 0.0
+    lon: 0.0
+  - lat: 5.0
+    lon: -8.0
+  - lat: 12.0
+    lon: -15.0
+  - lat: 22.0
+    lon: -18.0
+  - lat: 32.0
+    lon: -15.0
+  - lat: 40.0
+    lon: -12.0
+  - lat: 46.0
+    lon: -6.0
+  - lat: 49.5
+    lon: -3.0
+  - lat: 51.0
+    lon: 1.8
+  - lat: 51.05
+    lon: 2.4
+  eca_zones:
+  - NORTH_SEA_ECA
+- id: ROUTE-020
+  name: Sakhalin to Chiba
+  load_port:
+    name: Sakhalin
+    lat: 46.95
+    lon: 143.23
+  discharge_port:
+    name: Chiba
+    lat: 35.61
+    lon: 140.11
+  distance_nm: 775
+  waypoints:
+  - lat: 46.95
+    lon: 143.23
+  - lat: 45.5
+    lon: 142.0
+  - lat: 42.0
+    lon: 141.5
+  - lat: 38.0
+    lon: 141.0
+  - lat: 35.0
+    lon: 140.5
+  - lat: 35.61
+    lon: 140.11
+  eca_zones: []
+- id: ROUTE-021
+  name: Sakhalin to Qingdao
+  load_port:
+    name: Sakhalin
+    lat: 46.95
+    lon: 143.23
+  discharge_port:
+    name: Qingdao
+    lat: 36.07
+    lon: 120.38
+  distance_nm: 1457
+  waypoints:
+  - lat: 46.95
+    lon: 143.23
+  - lat: 45.5
+    lon: 142.0
+  - lat: 42.0
+    lon: 138.0
+  - lat: 40.0
+    lon: 135.0
+  - lat: 34.0
+    lon: 129.5
+  - lat: 35.5
+    lon: 123.0
+  - lat: 36.07
+    lon: 120.38
+  eca_zones: []
+- id: ROUTE-022
+  name: Das Island to Fujian
+  load_port:
+    name: Das Island
+    lat: 25.17
+    lon: 52.87
+  discharge_port:
+    name: Fujian
+    lat: 25.5
+    lon: 119.58
+  distance_nm: 5534
+  waypoints:
+  - lat: 25.17
+    lon: 52.87
+  - lat: 26.5
+    lon: 56.8
+  - lat: 24.5
+    lon: 59.5
+  - lat: 12.0
+    lon: 62.0
+  - lat: 5.5
+    lon: 81.0
+  - lat: 5.5
+    lon: 96.0
+  - lat: 1.2
+    lon: 104.0
+  - lat: 12.0
+    lon: 112.0
+  - lat: 24.5
+    lon: 119.5
+  - lat: 25.5
+    lon: 119.58
+  eca_zones: []
+- id: ROUTE-023
+  name: Sohar to Ennore
+  load_port:
+    name: Sohar
+    lat: 24.5
+    lon: 56.73
+  discharge_port:
+    name: Ennore
+    lat: 13.15
+    lon: 80.32
+  distance_nm: 1630
+  waypoints:
+  - lat: 24.5
+    lon: 56.73
+  - lat: 24.5
+    lon: 59.5
+  - lat: 20.0
+    lon: 62.0
+  - lat: 15.0
+    lon: 70.0
+  - lat: 12.5
+    lon: 76.0
+  - lat: 13.15
+    lon: 80.32
+  eca_zones: []
+- id: ROUTE-024
+  name: Gladstone to Incheon
+  load_port:
+    name: Gladstone
+    lat: -23.85
+    lon: 151.27
+  discharge_port:
+    name: Incheon
+    lat: 37.46
+    lon: 126.62
+  distance_nm: 4291
+  waypoints:
+  - lat: -23.85
+    lon: 151.27
+  - lat: -15.0
+    lon: 152.0
+  - lat: -10.0
+    lon: 148.0
+  - lat: -5.0
+    lon: 142.0
+  - lat: 4.0
+    lon: 138.0
+  - lat: 12.0
+    lon: 132.0
+  - lat: 20.0
+    lon: 130.0
+  - lat: 28.0
+    lon: 125.0
+  - lat: 35.5
+    lon: 123.0
+  - lat: 37.3
+    lon: 126.3
+  - lat: 37.46
+    lon: 126.62
+  eca_zones: []
+- id: ROUTE-025
+  name: Sabine Pass to Puerto Rico
+  load_port:
+    name: Sabine Pass
+    lat: 29.73
+    lon: -93.86
+  discharge_port:
+    name: Puerto Rico
+    lat: 18.47
+    lon: -66.1
+  distance_nm: 1934
+  waypoints:
+  - lat: 29.73
+    lon: -93.86
+  - lat: 25.0
+    lon: -90.0
+  - lat: 22.0
+    lon: -87.0
+  - lat: 18.5
+    lon: -80.0
+  - lat: 15.0
+    lon: -72.0
+  - lat: 18.47
+    lon: -66.1
+  eca_zones:
+  - NORTH_AMERICAN_ECA
+  - US_CARIBBEAN_ECA

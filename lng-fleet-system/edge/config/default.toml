@@ -1,0 +1,37 @@
+vessel_id = "LNG-VESSEL-001"
+imo_number = "IMO-9999999"
+
+[modbus_engine]
+address = "10.0.1.10"
+port = 502
+slave_id = 1
+poll_interval_ms = 1000
+
+[modbus_cargo]
+address = "10.0.1.11"
+port = 502
+slave_id = 2
+poll_interval_ms = 5000
+
+[modbus_aux]
+address = "10.0.1.12"
+port = 502
+slave_id = 3
+poll_interval_ms = 60000
+
+opcua_endpoint_url = "opc.tcp://10.0.2.1:4840"
+
+mqtt_broker_url = "mqtt://localhost:1883"
+mqtt_client_id = "lng-edge-gateway"
+
+satellite_mqtt_endpoint = "mqtts://shore-broker.lng-fleet.com:8883"
+satellite_mqtt_client_id = "lng-edge-gateway-sat"
+
+analytics_window_seconds = 300
+anomaly_zscore_threshold = 3.0
+
+data_retention_days = 30
+zstd_compression_level = 10
+
+satellite_rate_limit_messages_per_min = 30
+heartbeat_interval_seconds = 60

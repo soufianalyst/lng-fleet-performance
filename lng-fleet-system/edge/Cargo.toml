@@ -1,0 +1,21 @@
+[package]
+name = "lng-edge-gateway"
+version = "0.1.0"
+edition = "2021"
+description = "LNG Carrier Fleet Edge Gateway - onboard sensor ingestion, analytics, and satellite transmission"
+
+[dependencies]
+tokio = { version = "1.37", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+rumqttc = "0.24"
+tokio-modbus = "0.13"
+opcua-client = "0.12"
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.8", features = ["v4", "serde"] }
+zstd = { version = "0.13", features = ["experimental"] }
+log = "0.4"
+env_logger = "0.11"
+config = { version = "0.14", features = ["toml"] }
+anyhow = "1.0"
+thiserror = "1.0"

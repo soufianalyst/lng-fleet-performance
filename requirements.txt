@@ -1,0 +1,17 @@
+# LNG Carrier Fleet Performance Management System
+# Requirements (Python 3.10+)
+# 
+# This system uses only Python standard library modules.
+# No external dependencies required.
+#
+# Database: SQLite (built-in)
+# Math/Stats: math, random, statistics (built-in)
+# Hashing: hashlib (built-in)
+# Data: json, dataclasses (built-in)
+# Date/Time: datetime (built-in)
+#
+# Optional enhancements:
+# requests>=2.31.0    # For weather API integration (Open-Meteo, NOAA)
+# numpy>=1.24.0       # For advanced numerical analysis
+# matplotlib>=3.7.0   # For data visualization
+# pandas>=2.0.0       # For tabular data analysis
