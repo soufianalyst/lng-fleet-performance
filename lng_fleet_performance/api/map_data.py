@@ -68,7 +68,15 @@ async def fleet_positions(vessel_id: int = None):
         db = get_db()
     except Exception as e:
         return {"positions": [], "count": 0, "error": str(e)}
-    
+    try:
+        return _fleet_positions_impl(db, vessel_id)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"positions": [], "count": 0, "error": str(e)}
+
+
+def _fleet_positions_impl(db, vessel_id=None):
     # Get all vessels if no vessel_id is specified
     if not vessel_id:
         # Get all vessels from main DB
@@ -97,7 +105,6 @@ async def fleet_positions(vessel_id: int = None):
                 combined_voyages.append(vessel_to_voyage[vessel_id_val])
             else:
                 # If no active voyage, create a minimal voyage entry for the vessel
-                from datetime import datetime, timezone
                 now = datetime.now(timezone.utc)
                 # Use latest real telemetry position when available (sea-lane
                 # positions from the analytics DB); fall back to a port anchor
@@ -146,7 +153,6 @@ async def fleet_positions(vessel_id: int = None):
                 voyages = [voyage]
             else:
                 # No active voyage, use vessel data with latest telemetry position
-                from datetime import datetime, timezone
                 now = datetime.now(timezone.utc)
                 analytics_positions = _get_latest_analytics_positions()
                 default_lat, default_lon = 25.93, 51.56  # Ras Laffan anchorage
@@ -240,7 +246,6 @@ async def fleet_positions(vessel_id: int = None):
             })
         else:
             # For vessels without active voyages, create a static position at their default coordinates
-            from datetime import datetime, timezone
             positions.append({
                 "vessel_id": voy["vessel_id"],
                 "vessel_name": voy["vessel_name"],

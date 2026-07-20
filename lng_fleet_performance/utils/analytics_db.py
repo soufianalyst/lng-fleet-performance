@@ -26,7 +26,7 @@ class DictCursorWrapper:
         self._cursor = cursor
 
     def execute(self, query, params=None):
-        self._cursor.execute(query, params)
+        self._cursor.execute(query.replace("?", "%s") if params else query, params)
         return self
 
     def fetchall(self):
@@ -103,17 +103,17 @@ class AnalyticsDB:
 
     def fetchone(self, query, params=()):
         cur = self._conn.cursor()
-        cur.execute(query, params)
+        cur.execute(query.replace("?", "%s") if params else query, params)
         return cur.fetchone()
 
     def fetchall(self, query, params=()):
         cur = self._conn.cursor()
-        cur.execute(query, params)
+        cur.execute(query.replace("?", "%s") if params else query, params)
         return cur.fetchall()
 
     def execute(self, query, params=()):
         cur = self._conn.cursor()
-        cur.execute(query, params)
+        cur.execute(query.replace("?", "%s") if params else query, params)
         return cur
 
     def cursor(self):

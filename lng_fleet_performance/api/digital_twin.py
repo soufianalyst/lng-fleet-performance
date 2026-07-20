@@ -35,7 +35,7 @@ async def predictive_alerts(vessel_id: int):
     db = get_db()
     alerts = db.fetchall(
         """SELECT * FROM predictive_alerts WHERE vessel_id=?
-           ORDER BY created_at DESC LIMIT 20""",
+           ORDER BY alert_timestamp DESC LIMIT 20""",
         (vessel_id,))
     return {"vessel_id": vessel_id, "alerts": alerts, "count": len(alerts)}
 
