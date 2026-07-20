@@ -7,11 +7,35 @@ Usage:
     from utils.analytics_db import get_analytics_connection, get_analytics_db
 """
 import os
+import re
 import sqlite3
 import psycopg2
 import psycopg2.extras
 
 _ANALYTICS_CONN = None
+
+
+def translate_sql_for_pg(query):
+    """Translate SQLite-specific SQL functions to PostgreSQL equivalents."""
+    # strftime('%Y-%m', expr) → TO_CHAR(expr, 'YYYY-MM')
+    query = re.sub(r"strftime\('%Y-%m',\s*([^)]+)\)", r"TO_CHAR(\1, 'YYYY-MM')", query)
+    # strftime('%Y', expr) → TO_CHAR(expr, 'YYYY')
+    query = re.sub(r"strftime\('%Y',\s*([^)]+)\)", r"TO_CHAR(\1, 'YYYY')", query)
+    # strftime('%m', expr) → EXTRACT(MONTH FROM expr)
+    query = re.sub(r"strftime\('%m',\s*([^)]+)\)", r"EXTRACT(MONTH FROM \1)", query)
+    # date(expr, '-N days') → (expr) - INTERVAL 'N days'
+    # date(expr, '+N days') → (expr) + INTERVAL 'N days'
+    def _replace_date(m):
+        expr = m.group(1)
+        sign = m.group(2)
+        amount = m.group(3)
+        unit = m.group(4)
+        op = '-' if sign == '-' else '+'
+        return f"({expr}) {op} INTERVAL '{amount} {unit}'"
+    query = re.sub(r"date\(([^,]+),\s*'([+-])(\d+)\s+(day|days)'\)", _replace_date, query)
+    # date('now') → CURRENT_DATE
+    query = query.replace("date('now')", "CURRENT_DATE")
+    return query
 
 SQLITE_PATHS = [
     os.path.join(os.path.dirname(__file__), "..", "..", "lng-data-generator", "output", "lng_fleet_analytics.db"),
@@ -26,7 +50,8 @@ class DictCursorWrapper:
         self._cursor = cursor
 
     def execute(self, query, params=None):
-        self._cursor.execute(query.replace("?", "%s") if params else query, params)
+        q = translate_sql_for_pg(query)
+        self._cursor.execute(q.replace("?", "%s") if params else q, params)
         return self
 
     def fetchall(self):
@@ -70,6 +95,8 @@ class DictRowWrapper:
 class PostgreSQLConnection:
     """Wrapper around psycopg2 connection that mimics sqlite3 connection interface."""
 
+    IS_POSTGRESQL = True
+
     def __init__(self, dsn):
         self._conn = psycopg2.connect(dsn)
         self._conn.autocommit = True
@@ -100,20 +127,29 @@ class AnalyticsDB:
 
     def __init__(self, conn):
         self._conn = conn
+        self._is_pg = getattr(conn, 'IS_POSTGRESQL', False)
+
+    def _translate(self, query):
+        if self._is_pg:
+            return translate_sql_for_pg(query)
+        return query
 
     def fetchone(self, query, params=()):
         cur = self._conn.cursor()
-        cur.execute(query.replace("?", "%s") if params else query, params)
+        q = self._translate(query)
+        cur.execute(q.replace("?", "%s") if params else q, params)
         return cur.fetchone()
 
     def fetchall(self, query, params=()):
         cur = self._conn.cursor()
-        cur.execute(query.replace("?", "%s") if params else query, params)
+        q = self._translate(query)
+        cur.execute(q.replace("?", "%s") if params else q, params)
         return cur.fetchall()
 
     def execute(self, query, params=()):
         cur = self._conn.cursor()
-        cur.execute(query.replace("?", "%s") if params else query, params)
+        q = self._translate(query)
+        cur.execute(q.replace("?", "%s") if params else q, params)
         return cur
 
     def cursor(self):
