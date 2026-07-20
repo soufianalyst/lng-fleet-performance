@@ -1,8 +1,8 @@
-"""Seed the main SQLite DB from PostgreSQL analytics data on first startup (Render).
+"""Seed the main DB from PostgreSQL analytics data on first startup.
 
-When the SQLite DB is empty (no vessels), this reads vessel_registry from
-PostgreSQL and populates the vessels table, plus creates synthetic voyages,
-CII assessments, certificates, and ECA zones so the frontend works.
+When the main DB is empty (no vessels), reads vessel_registry from
+the same PostgreSQL database and populates the main tables so the
+frontend works.
 """
 import os
 import random
@@ -10,37 +10,42 @@ import math
 from datetime import datetime, timedelta, timezone
 
 
-def _pg_connect():
-    """Connect to PostgreSQL using DATABASE_URL."""
+def _get_pg_cur():
+    """Get a cursor from the DATABASE_URL connection."""
     url = os.environ.get("DATABASE_URL")
     if not url:
-        return None
+        return None, None
     try:
         import psycopg2
+        import psycopg2.extras
         conn = psycopg2.connect(url)
         conn.autocommit = True
-        return conn
+        return conn, conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     except Exception as e:
         print(f"[seed] PostgreSQL connection failed: {e}")
-        return None
+        return None, None
 
 
 def seed_if_empty(db):
-    """Check if main DB is empty; if so, seed from PostgreSQL."""
-    row = db.fetchone("SELECT COUNT(*) as cnt FROM vessels")
-    if row and (dict(row).get("cnt", 0)) > 0:
+    """Check if main DB is empty; if so, seed from vessel_registry."""
+    try:
+        row = db.fetchone("SELECT COUNT(*) as cnt FROM vessels")
+        cnt = dict(row).get("cnt", 0) if row else 0
+    except Exception:
+        cnt = 0
+    if cnt > 0:
+        print(f"[seed] Main DB already has {cnt} vessels — skipping")
         return False
 
-    pg = _pg_connect()
-    if pg is None:
-        print("[seed] No PostgreSQL — skipping seed (empty DB)")
+    pg_conn, cur = _get_pg_cur()
+    if cur is None:
+        print("[seed] No PostgreSQL — skipping seed")
         return False
 
-    print("[seed] Main DB empty — seeding from PostgreSQL...")
-    cur = pg.cursor()
+    print("[seed] Main DB empty — seeding from vessel_registry...")
 
     try:
-        _seed_eca_zones(db)
+        _seed_eca_zones(db, cur)
         _seed_vessels(db, cur)
         _seed_tanks(db, cur)
         _seed_voyages(db, cur)
@@ -51,7 +56,8 @@ def seed_if_empty(db):
         _seed_predictive_alerts(db, cur)
         _seed_charter_parties(db, cur)
 
-        count = dict(db.fetchone("SELECT COUNT(*) as cnt FROM vessels")).get("cnt", 0)
+        row = db.fetchone("SELECT COUNT(*) as cnt FROM vessels")
+        count = dict(row).get("cnt", 0) if row else 0
         print(f"[seed] Done — {count} vessels seeded")
         return True
     except Exception as e:
@@ -60,29 +66,25 @@ def seed_if_empty(db):
         traceback.print_exc()
         return False
     finally:
-        pg.close()
+        pg_conn.close()
 
 
-def _seed_eca_zones(db):
-    """Seed predefined ECA zones."""
+def _seed_eca_zones(db, pg_cur):
     from ..utils.geofencing import PREDEFINED_ECA_ZONES
     for zone in PREDEFINED_ECA_ZONES:
         zone.save(db)
 
 
 def _seed_vessels(db, pg_cur):
-    """Insert all 50 vessels from PostgreSQL vessel_registry."""
     pg_cur.execute("SELECT * FROM vessel_registry ORDER BY name")
     rows = pg_cur.fetchall()
-    cols = [desc[0] for desc in pg_cur.description]
 
     flags = ["MH", "PA", "NO", "SG", "GB", "BS", "HK", "MT", "LR", "IT",
              "NL", "DE", "JM", "GR", "KY"]
     engine_mfr = {"ME-GI": "MAN Energy Solutions", "X-DF": "WinGD"}
     engine_model = {"ME-GI": "ME-GI 7G80", "X-DF": "X-DF 7G80"}
 
-    for row in rows:
-        d = dict(zip(cols, row))
+    for d in rows:
         vessel_id_str = d.get("vessel_id", "")
         try:
             vessel_id_num = int(vessel_id_str.split("-")[1])
@@ -93,7 +95,7 @@ def _seed_vessels(db, pg_cur):
         flag = flags[vessel_id_num % len(flags)]
 
         db.execute("""
-            INSERT OR IGNORE INTO vessels
+            INSERT INTO vessels
             (vessel_id, imo_number, vessel_name, vessel_type, flag_state,
              classification_society, gross_tonnage, deadweight_tonnage,
              cargo_capacity_m3, number_of_tanks, propulsion_type,
@@ -103,6 +105,7 @@ def _seed_vessels(db, pg_cur):
              reliquefaction_plant)
             VALUES (?, ?, ?, 'LNG Carrier', ?, 'DNV', ?, ?, ?, 4, ?,
                     ?, ?, ?, ?, ?, ?, ?, 0.96, 2020, 0, 1)
+            ON CONFLICT (imo_number) DO NOTHING
         """, (
             vessel_id_num,
             d.get("imo", f"980{vessel_id_num:04d}"),
@@ -123,22 +126,22 @@ def _seed_vessels(db, pg_cur):
 
 
 def _seed_tanks(db, pg_cur):
-    """Create 4 cargo tanks per vessel."""
     pg_cur.execute("SELECT vessel_id, cargo_capacity_m3 FROM vessel_registry ORDER BY vessel_id")
     for row in pg_cur.fetchall():
         try:
-            vid_num = int(row[0].split("-")[1])
+            vid_num = int(row["vessel_id"].split("-")[1])
         except (ValueError, IndexError):
             continue
-        capacity = row[1] or 170000
+        capacity = row["cargo_capacity_m3"] or 170000
         tank_cap = capacity / 4
         for i in range(1, 5):
             try:
                 db.execute("""
-                    INSERT OR IGNORE INTO vessel_tanks
+                    INSERT INTO vessel_tanks
                     (vessel_id, tank_name, tank_position, capacity_m3,
                      design_pressure_bar, design_temperature_k, insulation_type)
                     VALUES (?, ?, ?, ?, 1.2, 111.0, 'membrane')
+                    ON CONFLICT (vessel_id, tank_name) DO NOTHING
                 """, (vid_num, f"Tank {i}",
                       "port" if i <= 2 else "starboard",
                       round(tank_cap, 1)))
@@ -147,7 +150,6 @@ def _seed_tanks(db, pg_cur):
 
 
 def _seed_voyages(db, pg_cur):
-    """Create 3 voyages per vessel from telemetry data (latest daily records)."""
     pg_cur.execute("""
         SELECT vessel_id, lat_avg, lon_avg, sog_avg, fuel_consumption_total_kg,
                co2_total_mt, distance_total_nm, bog_rate_avg, cargo_qty_avg,
@@ -158,9 +160,7 @@ def _seed_voyages(db, pg_cur):
             GROUP BY vessel_id
         )
     """)
-    latest_telemetry = {}
-    for row in pg_cur.fetchall():
-        latest_telemetry[row[0]] = row
+    latest_telemetry = {row["vessel_id"]: row for row in pg_cur.fetchall()}
 
     ports = [
         ("Ras Laffan", 25.93, 51.56), ("Qatar", 25.29, 51.53),
@@ -175,9 +175,7 @@ def _seed_voyages(db, pg_cur):
     ]
 
     pg_cur.execute("SELECT vessel_id, name, propulsion_type FROM vessel_registry ORDER BY vessel_id")
-    vessel_info = {}
-    for row in pg_cur.fetchall():
-        vessel_info[row[0]] = (row[1], row[2])
+    vessel_info = {row["vessel_id"]: (row["name"], row["propulsion_type"]) for row in pg_cur.fetchall()}
 
     now = datetime.now(timezone.utc)
 
@@ -215,11 +213,11 @@ def _seed_voyages(db, pg_cur):
             actual_arr = arr_date.isoformat() if status == "completed" else None
             planned_arr = arr_date.isoformat()
 
-            voyage_num = f"V-{vid_num:03d}-{2025}-{voyage_idx + 1:03d}"
+            voyage_num = f"V-{vid_num:03d}-2025-{voyage_idx + 1:03d}"
 
             try:
                 db.execute("""
-                    INSERT OR IGNORE INTO voyages
+                    INSERT INTO voyages
                     (vessel_id, voyage_number, charterer, load_port, discharge_port,
                      cargo_quantity_mt, cargo_type, planned_departure, actual_departure,
                      planned_arrival, actual_arrival, status, route_type,
@@ -227,6 +225,7 @@ def _seed_voyages(db, pg_cur):
                      eca_time_hours, eu_ets_applicable)
                     VALUES (?, ?, ?, ?, ?, ?, 'LNG', ?, ?, ?, ?, ?, 'weather_optimized',
                             ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT (vessel_id, voyage_number) DO NOTHING
                 """, (
                     vid_num, voyage_num, f"Charterer {vid_num % 5 + 1}",
                     load_port, disc_port, cargo_mt,
@@ -236,16 +235,15 @@ def _seed_voyages(db, pg_cur):
                     12.0 if voyage_idx % 3 == 0 else 0,
                     1 if disc_port in ("Sines", "Zeebrugge", "Arzew", "Ain Sukhna") else 0,
                 ))
-                voyage_id = db.fetchone("SELECT last_insert_rowid() as id")
-                if voyage_id:
-                    vid = dict(voyage_id)["id"]
+                row = db.fetchone("SELECT currval(pg_get_serial_sequence('voyages', 'voyage_id')) as id")
+                if row:
+                    vid = dict(row)["id"]
                     _create_waypoints(db, vid, load_lat, load_lon, disc_lat, disc_lon, 10 + voyage_idx * 2)
             except Exception:
                 pass
 
 
 def _create_waypoints(db, voyage_id, lat1, lon1, lat2, lon2, num_wp):
-    """Create waypoints between two points."""
     for i in range(num_wp):
         frac = i / (num_wp - 1)
         lat = lat1 + frac * (lat2 - lat1) + random.uniform(-0.5, 0.5)
@@ -254,7 +252,7 @@ def _create_waypoints(db, voyage_id, lat1, lon1, lat2, lon2, num_wp):
         course = math.degrees(math.atan2(lon2 - lon1, lat2 - lat1)) % 360
         try:
             db.execute("""
-                INSERT OR IGNORE INTO voyage_waypoints
+                INSERT INTO voyage_waypoints
                 (voyage_id, sequence_num, latitude, longitude, waypoint_name,
                  speed_planned_kn, speed_actual_kn, course_deg, in_eca,
                  weather_hs_m, wind_speed_kn)
@@ -271,7 +269,6 @@ def _create_waypoints(db, voyage_id, lat1, lon1, lat2, lon2, num_wp):
 
 
 def _seed_certificates(db, pg_cur):
-    """Create certificates for all vessels."""
     pg_cur.execute("SELECT vessel_id FROM vessel_registry ORDER BY vessel_id")
     cert_types = [
         ("IAPP", "International Air Pollution Prevention Certificate"),
@@ -285,7 +282,7 @@ def _seed_certificates(db, pg_cur):
 
     for row in pg_cur.fetchall():
         try:
-            vid_num = int(row[0].split("-")[1])
+            vid_num = int(row["vessel_id"].split("-")[1])
         except (ValueError, IndexError):
             continue
 
@@ -302,7 +299,7 @@ def _seed_certificates(db, pg_cur):
 
             try:
                 db.execute("""
-                    INSERT OR IGNORE INTO certificates
+                    INSERT INTO certificates
                     (vessel_id, cert_type, cert_number, issuing_authority,
                      issue_date, expiry_date, status, notes)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -318,7 +315,6 @@ def _seed_certificates(db, pg_cur):
 
 
 def _seed_cii(db, pg_cur):
-    """Create CII assessments from analytics fleet_daily_summary data."""
     pg_cur.execute("""
         SELECT vessel_id, AVG(avg_speed) as avg_spd,
                SUM(total_fuel_kg) as total_fuel,
@@ -328,13 +324,11 @@ def _seed_cii(db, pg_cur):
         GROUP BY vessel_id
     """)
     cii_data = pg_cur.fetchall()
-    cols = [desc[0] for desc in pg_cur.description]
 
     now = datetime.now(timezone.utc)
     boundaries = {"A": 5.05, "B": 5.70, "C": 6.40, "D": 7.15}
 
-    for row in cii_data:
-        d = dict(zip(cols, row))
+    for d in cii_data:
         try:
             vid_num = int(d["vessel_id"].split("-")[1])
         except (ValueError, IndexError):
@@ -360,7 +354,7 @@ def _seed_cii(db, pg_cur):
 
         try:
             db.execute("""
-                INSERT OR IGNORE INTO cii_assessment
+                INSERT INTO cii_assessment
                 (vessel_id, assessment_year, assessment_date, annual_co2_mt,
                  annual_cargo_mt_nm, cii_calculated, cii_required, cii_rating,
                  rating_boundary_a, rating_boundary_b, rating_boundary_c,
@@ -381,7 +375,6 @@ def _seed_cii(db, pg_cur):
 
 
 def _seed_hull_performance(db, pg_cur):
-    """Create hull performance records from analytics telemetry."""
     pg_cur.execute("""
         SELECT vessel_id, AVG(sog_avg) as avg_speed, AVG(shaft_power_kw_avg) as avg_power,
                AVG(trim_avg) as avg_trim
@@ -390,13 +383,13 @@ def _seed_hull_performance(db, pg_cur):
     """)
     for row in pg_cur.fetchall():
         try:
-            vid_num = int(row[0].split("-")[1])
+            vid_num = int(row["vessel_id"].split("-")[1])
         except (ValueError, IndexError):
             continue
 
-        speed = row[1] or 18.0
-        power = row[2] or 20000
-        trim = row[3] or 2.0
+        speed = row["avg_speed"] or 18.0
+        power = row["avg_power"] or 20000
+        trim = row["avg_trim"] or 2.0
 
         ref_power = 75 * (speed ** 3)
         dev_pct = ((power - ref_power) / max(ref_power, 1)) * 100
@@ -408,7 +401,7 @@ def _seed_hull_performance(db, pg_cur):
             d = now - timedelta(days=days_ago)
             try:
                 db.execute("""
-                    INSERT OR IGNORE INTO hull_performance
+                    INSERT INTO hull_performance
                     (vessel_id, record_date, speed_kn, shaft_power_kw,
                      wind_speed_kn, wind_direction_deg, sea_state,
                      water_temp_k, draft_fwd_m, draft_aft_m, trim_m,
@@ -435,13 +428,12 @@ def _seed_hull_performance(db, pg_cur):
 
 
 def _seed_digital_twin(db, pg_cur):
-    """Create digital twin state records."""
     pg_cur.execute("SELECT vessel_id FROM vessel_registry ORDER BY vessel_id")
     now = datetime.now(timezone.utc)
 
     for row in pg_cur.fetchall():
         try:
-            vid_num = int(row[0].split("-")[1])
+            vid_num = int(row["vessel_id"].split("-")[1])
         except (ValueError, IndexError):
             continue
 
@@ -449,7 +441,7 @@ def _seed_digital_twin(db, pg_cur):
             d = now - timedelta(days=days_ago)
             try:
                 db.execute("""
-                    INSERT OR IGNORE INTO digital_twin_state
+                    INSERT INTO digital_twin_state
                     (vessel_id, record_timestamp, engine_health_index,
                      hull_health_index, bog_system_health,
                      predicted_rul_engine_days, predicted_rul_hull_days,
@@ -469,27 +461,26 @@ def _seed_digital_twin(db, pg_cur):
 
 
 def _seed_predictive_alerts(db, pg_cur):
-    """Create a few predictive alerts for some vessels."""
     pg_cur.execute("SELECT vessel_id FROM vessel_registry ORDER BY vessel_id LIMIT 15")
     now = datetime.now(timezone.utc)
     alert_types = [
-        ("hull_fouling", "medium", "hull", "Hull fouling degradation detected — cleaning recommended within 60 days"),
-        ("bor_increase", "low", "cargo", "BOR rate slightly elevated — monitor tank insulation"),
-        ("engine_efficiency", "low", "engine", "SFOC deviation above baseline — check cylinder condition"),
-        ("cii_projection", "high", "compliance", "CII rating projected to fall to D by year end"),
+        ("hull_fouling", "medium", "hull", "Hull fouling degradation detected"),
+        ("bor_increase", "low", "cargo", "BOR rate slightly elevated"),
+        ("engine_efficiency", "low", "engine", "SFOC deviation above baseline"),
+        ("cii_projection", "high", "compliance", "CII rating projected to fall to D"),
         ("certificate_expiry", "medium", "certificates", "IEE certificate expiring within 90 days"),
     ]
 
     for row in pg_cur.fetchall():
         try:
-            vid_num = int(row[0].split("-")[1])
+            vid_num = int(row["vessel_id"].split("-")[1])
         except (ValueError, IndexError):
             continue
 
         atype, severity, component, desc = random.choice(alert_types)
         try:
             db.execute("""
-                INSERT OR IGNORE INTO predictive_alerts
+                INSERT INTO predictive_alerts
                 (vessel_id, alert_timestamp, alert_type, severity, component,
                  description, predicted_failure_days, confidence_pct,
                  recommended_action, acknowledged, resolved)
@@ -504,7 +495,6 @@ def _seed_predictive_alerts(db, pg_cur):
 
 
 def _seed_charter_parties(db, pg_cur):
-    """Create charter party records for voyages."""
     try:
         voyages = db.fetchall("SELECT voyage_id, vessel_id FROM voyages LIMIT 100")
         charterers = ["Shell International", "BP Gas Marketing", "TotalEnergies LNG",
@@ -513,10 +503,9 @@ def _seed_charter_parties(db, pg_cur):
 
         for voy in voyages:
             vid = dict(voy)["voyage_id"]
-            vessel_id = dict(voy)["vessel_id"]
             try:
                 db.execute("""
-                    INSERT OR IGNORE INTO charter_party
+                    INSERT INTO charter_party
                     (voyage_id, charterer, charter_type, speed_warranted_kn,
                      consumption_warranted_mt_day, consumption_tolerance_pct,
                      bor_warranted_pct_day, bor_tolerance_pct, sea_margin_pct,
