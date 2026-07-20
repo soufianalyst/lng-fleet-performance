@@ -368,150 +368,160 @@ async def cp_compliance_detail(vessel_id: str):
 
 @router.get("/bunker-costs")
 async def bunker_costs():
-    db = _analytics_db()
-    if db is None:
-        return {"error": "Analytics database not found. Run the aggregation pipeline first."}
+    try:
+        db = _analytics_db()
+        if db is None:
+            return {"error": "Analytics database not found. Run the aggregation pipeline first."}
 
-    vessels = _vessel_registry_map(db)
+        vessels = _vessel_registry_map(db)
 
-    rows = db.fetchall("""
-        SELECT vr.vessel_id, vr.name, vr.cargo_capacity_m3,
-               SUM(td.fuel_consumption_total_kg) AS total_fuel_kg,
-               SUM(td.distance_total_nm) AS total_distance,
-               SUM(td.fuel_consumption_total_kg / 1000 * CASE
-                   WHEN CAST(strftime('%m', td.day) AS INTEGER) BETWEEN 1 AND 3 THEN 550
-                   WHEN CAST(strftime('%m', td.day) AS INTEGER) BETWEEN 4 AND 6 THEN 580
-                   WHEN CAST(strftime('%m', td.day) AS INTEGER) BETWEEN 7 AND 9 THEN 620
-                   ELSE 600 END) AS total_fuel_cost,
-               SUM((td.cargo_qty_avg / 100.0) * vr.cargo_capacity_m3 * 450 / 1000) AS total_cargo_mt
-        FROM vessel_registry vr
-        JOIN telemetry_daily td ON vr.vessel_id = td.vessel_id
-        GROUP BY vr.vessel_id
-    """)
+        rows = db.fetchall("""
+            SELECT vr.vessel_id, vr.name, vr.cargo_capacity_m3,
+                   SUM(td.fuel_consumption_total_kg) AS total_fuel_kg,
+                   SUM(td.distance_total_nm) AS total_distance,
+                   SUM(td.fuel_consumption_total_kg / 1000 * CASE
+                       WHEN CAST(strftime('%m', td.day) AS INTEGER) BETWEEN 1 AND 3 THEN 550
+                       WHEN CAST(strftime('%m', td.day) AS INTEGER) BETWEEN 4 AND 6 THEN 580
+                       WHEN CAST(strftime('%m', td.day) AS INTEGER) BETWEEN 7 AND 9 THEN 620
+                       ELSE 600 END) AS total_fuel_cost,
+                   SUM((td.cargo_qty_avg / 100.0) * vr.cargo_capacity_m3 * 450 / 1000) AS total_cargo_mt
+            FROM vessel_registry vr
+            JOIN telemetry_daily td ON vr.vessel_id = td.vessel_id
+            GROUP BY vr.vessel_id
+        """)
 
-    monthly_costs = db.fetchall("""
-        SELECT td.vessel_id,
-               strftime('%Y-%m', td.day) AS month,
-               SUM(td.fuel_consumption_total_kg / 1000 * CASE
-                   WHEN CAST(strftime('%m', td.day) AS INTEGER) BETWEEN 1 AND 3 THEN 550
-                   WHEN CAST(strftime('%m', td.day) AS INTEGER) BETWEEN 4 AND 6 THEN 580
-                   WHEN CAST(strftime('%m', td.day) AS INTEGER) BETWEEN 7 AND 9 THEN 620
-                   ELSE 600 END) AS cost_usd
-        FROM telemetry_daily td
-        GROUP BY td.vessel_id, month
-        ORDER BY td.vessel_id, month
-    """)
+        monthly_costs = db.fetchall("""
+            SELECT td.vessel_id,
+                   strftime('%Y-%m', td.day) AS month,
+                   SUM(td.fuel_consumption_total_kg / 1000 * CASE
+                       WHEN CAST(strftime('%m', td.day) AS INTEGER) BETWEEN 1 AND 3 THEN 550
+                       WHEN CAST(strftime('%m', td.day) AS INTEGER) BETWEEN 4 AND 6 THEN 580
+                       WHEN CAST(strftime('%m', td.day) AS INTEGER) BETWEEN 7 AND 9 THEN 620
+                       ELSE 600 END) AS cost_usd
+            FROM telemetry_daily td
+            GROUP BY td.vessel_id, month
+            ORDER BY td.vessel_id, month
+        """)
 
-    monthly_map = defaultdict(list)
-    for mc in monthly_costs:
-        monthly_map[mc["vessel_id"]].append({"month": mc["month"], "cost_usd": _round(mc["cost_usd"])})
+        monthly_map = defaultdict(list)
+        for mc in monthly_costs:
+            monthly_map[mc["vessel_id"]].append({"month": mc["month"], "cost_usd": _round(mc["cost_usd"])})
 
-    results = []
-    for r in rows:
-        r = dict(r)
-        total_fuel_kg = r["total_fuel_kg"] or 0
-        total_fuel_mt = total_fuel_kg / 1000
-        total_cost = r["total_fuel_cost"] or 0
-        total_dist = r["total_distance"] or 0
-        total_cargo = r["total_cargo_mt"] or 0
+        results = []
+        for r in rows:
+            r = dict(r)
+            total_fuel_kg = r["total_fuel_kg"] or 0
+            total_fuel_mt = total_fuel_kg / 1000
+            total_cost = r["total_fuel_cost"] or 0
+            total_dist = r["total_distance"] or 0
+            total_cargo = r["total_cargo_mt"] or 0
 
-        results.append({
-            "vessel_id": r["vessel_id"],
-            "vessel_name": r["name"],
-            "fuel_cost": _round(total_cost),
-            "total_fuel_mt": _round(total_fuel_mt),
-            "avg_cost_per_nm_usd": _round(total_cost / total_dist) if total_dist > 0 else 0,
-            "avg_cost_per_tonne_cargo_usd": _round(total_cost / total_cargo) if total_cargo > 0 else 0,
-            "fuel_cost_trend": monthly_map.get(r["vessel_id"], []),
-        })
+            results.append({
+                "vessel_id": r["vessel_id"],
+                "vessel_name": r["name"],
+                "fuel_cost": _round(total_cost),
+                "total_fuel_mt": _round(total_fuel_mt),
+                "avg_cost_per_nm_usd": _round(total_cost / total_dist) if total_dist > 0 else 0,
+                "avg_cost_per_tonne_cargo_usd": _round(total_cost / total_cargo) if total_cargo > 0 else 0,
+                "fuel_cost_trend": monthly_map.get(r["vessel_id"], []),
+            })
 
-    fleet_total_fuel_mt = _round(sum(v["total_fuel_mt"] for v in results))
-    fleet_total_fuel_cost = _round(sum(v["fuel_cost"] for v in results))
-    avg_cost_per_nm = _round(sum(v["avg_cost_per_nm_usd"] for v in results) / len(results), 2) if results else 0
-    avg_cost_per_tonne = _round(sum(v["avg_cost_per_tonne_cargo_usd"] for v in results) / len(results), 2) if results else 0
+        fleet_total_fuel_mt = _round(sum(v["total_fuel_mt"] for v in results))
+        fleet_total_fuel_cost = _round(sum(v["fuel_cost"] for v in results))
+        avg_cost_per_nm = _round(sum(v["avg_cost_per_nm_usd"] for v in results) / len(results), 2) if results else 0
+        avg_cost_per_tonne = _round(sum(v["avg_cost_per_tonne_cargo_usd"] for v in results) / len(results), 2) if results else 0
 
-    return {
-        "vessels": results,
-        "total_fuel_mt": fleet_total_fuel_mt,
-        "total_fuel_cost": fleet_total_fuel_cost,
-        "avg_cost_per_nm": avg_cost_per_nm,
-        "avg_cost_per_tonne": avg_cost_per_tonne,
-    }
+        return {
+            "vessels": results,
+            "total_fuel_mt": fleet_total_fuel_mt,
+            "total_fuel_cost": fleet_total_fuel_cost,
+            "avg_cost_per_nm": avg_cost_per_nm,
+            "avg_cost_per_tonne": avg_cost_per_tonne,
+        }
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"error": str(e), "type": type(e).__name__}
 
 
 @router.get("/bog-impact")
 async def bog_impact():
-    db = _analytics_db()
-    if db is None:
-        return {"error": "Analytics database not found. Run the aggregation pipeline first."}
+    try:
+        db = _analytics_db()
+        if db is None:
+            return {"error": "Analytics database not found. Run the aggregation pipeline first."}
 
-    vessels = _vessel_registry_map(db)
+        vessels = _vessel_registry_map(db)
 
-    rows = db.fetchall("""
-        SELECT vr.vessel_id, vr.name, vr.cargo_capacity_m3,
-               AVG(td.bog_rate_avg) AS avg_bog_rate,
-               SUM(td.fuel_consumption_total_kg) AS total_fuel_kg,
-               SUM((td.cargo_qty_avg / 100.0) * vr.cargo_capacity_m3 * 450 / 1000) AS total_cargo_mt
-        FROM vessel_registry vr
-        JOIN telemetry_daily td ON vr.vessel_id = td.vessel_id
-        GROUP BY vr.vessel_id
-    """)
+        rows = db.fetchall("""
+            SELECT vr.vessel_id, vr.name, vr.cargo_capacity_m3,
+                   AVG(td.bog_rate_avg) AS avg_bog_rate,
+                   SUM(td.fuel_consumption_total_kg) AS total_fuel_kg,
+                   SUM((td.cargo_qty_avg / 100.0) * vr.cargo_capacity_m3 * 450 / 1000) AS total_cargo_mt
+            FROM vessel_registry vr
+            JOIN telemetry_daily td ON vr.vessel_id = td.vessel_id
+            GROUP BY vr.vessel_id
+        """)
 
-    monthly_bog = db.fetchall("""
-        SELECT td.vessel_id,
-               strftime('%Y-%m', td.day) AS month,
-               AVG(td.bog_rate_avg) AS bog_rate,
-               SUM(td.fuel_consumption_total_kg) AS fuel_kg,
-               SUM((td.cargo_qty_avg / 100.0) * vr.cargo_capacity_m3 * 450 / 1000) AS cargo_mt
-        FROM vessel_registry vr
-        JOIN telemetry_daily td ON vr.vessel_id = td.vessel_id
-        GROUP BY td.vessel_id, month
-        ORDER BY td.vessel_id, month
-    """)
+        monthly_bog = db.fetchall("""
+            SELECT td.vessel_id,
+                   strftime('%Y-%m', td.day) AS month,
+                   AVG(td.bog_rate_avg) AS bog_rate,
+                   SUM(td.fuel_consumption_total_kg) AS fuel_kg,
+                   SUM((td.cargo_qty_avg / 100.0) * vr.cargo_capacity_m3 * 450 / 1000) AS cargo_mt
+            FROM vessel_registry vr
+            JOIN telemetry_daily td ON vr.vessel_id = td.vessel_id
+            GROUP BY td.vessel_id, month
+            ORDER BY td.vessel_id, month
+        """)
 
-    monthly_map = defaultdict(list)
-    for mb in monthly_bog:
-        cargo_mt = mb["cargo_mt"] or 1
-        bog_pct = (mb["fuel_kg"] or 0) / cargo_mt * 100 if cargo_mt else 0
-        monthly_map[mb["vessel_id"]].append({
-            "month": mb["month"],
-            "bog_rate": _round(mb["bog_rate"] or 0, 4),
-            "bog_pct": _round(bog_pct, 2),
-        })
+        monthly_map = defaultdict(list)
+        for mb in monthly_bog:
+            cargo_mt = mb["cargo_mt"] or 1
+            bog_pct = (mb["fuel_kg"] or 0) / cargo_mt * 100 if cargo_mt else 0
+            monthly_map[mb["vessel_id"]].append({
+                "month": mb["month"],
+                "bog_rate": _round(mb["bog_rate"] or 0, 4),
+                "bog_pct": _round(bog_pct, 2),
+            })
 
-    results = []
-    fleet_bog_mt = 0.0
-    fleet_bog_cost = 0.0
-    for r in rows:
-        r = dict(r)
-        cargo_cap = r["cargo_capacity_m3"] or 174000
-        avg_bog = r["avg_bog_rate"] or 0
-        total_cargo = r["total_cargo_mt"] or 1
+        results = []
+        fleet_bog_mt = 0.0
+        fleet_bog_cost = 0.0
+        for r in rows:
+            r = dict(r)
+            cargo_cap = r["cargo_capacity_m3"] or 174000
+            avg_bog = r["avg_bog_rate"] or 0
+            total_cargo = r["total_cargo_mt"] or 1
 
-        bog_mt = (avg_bog * 24 / 1000) if avg_bog else 0
-        bog_pct = (bog_mt / total_cargo * 100) if total_cargo else 0
-        bog_cost = avg_bog * 24 / 1000 * cargo_cap * 450 / 1000 * DEMO_RATE_USD_PER_MT * 365
+            bog_mt = (avg_bog * 24 / 1000) if avg_bog else 0
+            bog_pct = (bog_mt / total_cargo * 100) if total_cargo else 0
+            bog_cost = avg_bog * 24 / 1000 * cargo_cap * 450 / 1000 * DEMO_RATE_USD_PER_MT * 365
 
-        fleet_bog_mt += bog_mt
-        fleet_bog_cost += bog_cost
+            fleet_bog_mt += bog_mt
+            fleet_bog_cost += bog_cost
 
-        results.append({
-            "vessel_id": r["vessel_id"],
-            "vessel_name": r["name"],
-            "bog_pct": _round(bog_pct, 2),
-            "bog_cost_usd": _round(bog_cost),
-            "avg_bog_rate_kg_h": _round(avg_bog, 4),
-            "bog_trend": monthly_map.get(r["vessel_id"], []),
-        })
+            results.append({
+                "vessel_id": r["vessel_id"],
+                "vessel_name": r["name"],
+                "bog_pct": _round(bog_pct, 2),
+                "bog_cost_usd": _round(bog_cost),
+                "avg_bog_rate_kg_h": _round(avg_bog, 4),
+                "bog_trend": monthly_map.get(r["vessel_id"], []),
+            })
 
-    fleet_bog_pct_of_cargo = _round(statistics.mean([v["bog_pct"] for v in results]), 2) if results else 0
+        fleet_bog_pct_of_cargo = _round(statistics.mean([v["bog_pct"] for v in results]), 2) if results else 0
 
-    return {
-        "vessels": results,
-        "total_bog_mt": _round(fleet_bog_mt),
-        "bog_pct_of_cargo": fleet_bog_pct_of_cargo,
-        "total_bog_cost": _round(fleet_bog_cost),
-    }
+        return {
+            "vessels": results,
+            "total_bog_mt": _round(fleet_bog_mt),
+            "bog_pct_of_cargo": fleet_bog_pct_of_cargo,
+            "total_bog_cost": _round(fleet_bog_cost),
+        }
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"error": str(e), "type": type(e).__name__}
 
 
 @router.get("/offhire-risk")
@@ -683,67 +693,72 @@ async def carbon_cost():
 
 @router.get("/utilization")
 async def utilization():
-    db = _analytics_db()
-    if db is None:
-        return {"error": "Analytics database not found. Run the aggregation pipeline first."}
+    try:
+        db = _analytics_db()
+        if db is None:
+            return {"error": "Analytics database not found. Run the aggregation pipeline first."}
 
-    vessels = _vessel_registry_map(db)
+        vessels = _vessel_registry_map(db)
 
-    rows = db.fetchall("""
-        SELECT td.*, vr.name
-        FROM telemetry_daily td
-        JOIN vessel_registry vr ON td.vessel_id = vr.vessel_id
-        WHERE td.day >= date((SELECT MAX(day) FROM telemetry_daily), '-30 days')
-        ORDER BY td.vessel_id, td.day
-    """)
+        rows = db.fetchall("""
+            SELECT td.*, vr.name
+            FROM telemetry_daily td
+            JOIN vessel_registry vr ON td.vessel_id = vr.vessel_id
+            WHERE td.day >= date((SELECT MAX(day) FROM telemetry_daily), '-30 days')
+            ORDER BY td.vessel_id, td.day
+        """)
 
-    vessel_days = defaultdict(list)
-    for r in rows:
-        vessel_days[r["vessel_id"]].append(dict(r))
+        vessel_days = defaultdict(list)
+        for r in rows:
+            vessel_days[r["vessel_id"]].append(dict(r))
 
-    results = []
-    for vid, days in vessel_days.items():
-        reg = vessels.get(vid, {})
-        latest = days[-1] if days else {}
+        results = []
+        for vid, days in vessel_days.items():
+            reg = vessels.get(vid, {})
+            latest = days[-1] if days else {}
 
-        cargo_pct = latest.get("cargo_qty_avg") or 0
-        sog = latest.get("sog_avg") or 0
-        lat = latest.get("lat_avg")
-        lon = latest.get("lon_avg")
+            cargo_pct = latest.get("cargo_qty_avg") or 0
+            sog = latest.get("sog_avg") or 0
+            lat = latest.get("lat_avg")
+            lon = latest.get("lon_avg")
 
-        if cargo_pct > 30 and sog > 5:
-            status = "laden"
-        elif cargo_pct <= 30 and sog > 5:
-            status = "ballast"
-        elif sog <= 2:
-            status = "port"
-        else:
-            status = "idle"
+            if cargo_pct > 30 and sog > 5:
+                status = "laden"
+            elif cargo_pct <= 30 and sog > 5:
+                status = "ballast"
+            elif sog <= 2:
+                status = "port"
+            else:
+                status = "idle"
 
-        laden_ballast_days = sum(1 for d in days if (d.get("cargo_qty_avg") or 0) > 30 and (d.get("sog_avg") or 0) > 5 or (d.get("cargo_qty_avg") or 0) <= 30 and (d.get("sog_avg") or 0) > 5)
-        util_30d = (laden_ballast_days / 30 * 100) if days else 0
+            laden_ballast_days = sum(1 for d in days if (d.get("cargo_qty_avg") or 0) > 30 and (d.get("sog_avg") or 0) > 5 or (d.get("cargo_qty_avg") or 0) <= 30 and (d.get("sog_avg") or 0) > 5)
+            util_30d = (laden_ballast_days / 30 * 100) if days else 0
 
-        results.append({
-            "vessel_id": vid,
-            "vessel_name": reg.get("name", vid),
-            "status": status,
-            "cargo_pct": _round(cargo_pct, 1),
-            "speed": _round(sog),
-            "utilization_30d_pct": _round(util_30d, 1),
-        })
+            results.append({
+                "vessel_id": vid,
+                "vessel_name": reg.get("name", vid),
+                "status": status,
+                "cargo_pct": _round(cargo_pct, 1),
+                "speed": _round(sog),
+                "utilization_30d_pct": _round(util_30d, 1),
+            })
 
-    fleet_utilization = _round(statistics.mean([v["utilization_30d_pct"] for v in results]), 1) if results else 0
-    laden_count = sum(1 for v in results if v["status"] == "laden")
-    ballast_count = sum(1 for v in results if v["status"] == "ballast")
-    idle_count = sum(1 for v in results if v["status"] in ("idle", "port"))
+        fleet_utilization = _round(statistics.mean([v["utilization_30d_pct"] for v in results]), 1) if results else 0
+        laden_count = sum(1 for v in results if v["status"] == "laden")
+        ballast_count = sum(1 for v in results if v["status"] == "ballast")
+        idle_count = sum(1 for v in results if v["status"] in ("idle", "port"))
 
-    return {
-        "vessels": results,
-        "fleet_utilization_pct": fleet_utilization,
-        "laden_count": laden_count,
-        "ballast_count": ballast_count,
-        "idle_count": idle_count,
-    }
+        return {
+            "vessels": results,
+            "fleet_utilization_pct": fleet_utilization,
+            "laden_count": laden_count,
+            "ballast_count": ballast_count,
+            "idle_count": idle_count,
+        }
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"error": str(e), "type": type(e).__name__}
 
 
 @router.get("/utilization/timeseries")
