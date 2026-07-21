@@ -71,6 +71,20 @@ tr:hover{background:rgba(59,130,246,0.04)}
 .kpi{text-align:center}
 .kpi-label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
 .kpi-value{font-size:28px;font-weight:700}
+.login-page{display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg);padding:20px}
+.login-box{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:40px;width:100%;max-width:400px}
+.login-box h1{font-size:24px;font-weight:700;color:var(--primary);margin-bottom:4px}
+.login-box .subtitle{color:var(--muted);font-size:14px;margin-bottom:24px}
+.login-box input{width:100%;padding:12px 16px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:14px;font-family:inherit;margin-bottom:12px;outline:none}
+.login-box input:focus{border-color:var(--primary)}
+.login-box .btn-login{width:100%;padding:12px;border-radius:8px;border:none;background:var(--primary);color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s}
+.login-box .btn-login:hover{background:#2563eb}
+.login-box .error{color:var(--danger);font-size:13px;margin-top:8px}
+.sidebar .nav-group{display:flex;justify-content:space-between;align-items:center}
+.sidebar .user-info{padding:12px 20px;border-top:1px solid var(--border);margin-top:8px;font-size:12px;color:var(--muted)}
+.sidebar .user-info .role{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600;background:rgba(59,130,246,0.15);color:var(--primary);margin-left:4px}
+.sidebar .btn-logout{display:block;width:calc(100% - 40px);margin:8px 20px;padding:8px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--danger);font-size:12px;cursor:pointer;font-family:inherit;text-align:center}
+.sidebar .btn-logout:hover{background:rgba(239,68,68,0.1)}
 .hamburger{display:none;position:fixed;top:12px;left:12px;z-index:1100;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 12px;cursor:pointer;color:var(--text);font-size:18px}
 .sidebar-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:999}
 .table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
@@ -92,9 +106,28 @@ tr:hover{background:rgba(59,130,246,0.04)}
 const {useState, useEffect, useRef, useCallback, useMemo} = React;
 const API = '/api';
 
-async function fetchAPI(path) {
-  const res = await fetch(`${API}${path}`);
+function getToken() { return localStorage.getItem('lng_token'); }
+function setToken(t) { localStorage.setItem('lng_token', t); }
+function clearToken() { localStorage.removeItem('lng_token'); localStorage.removeItem('lng_user'); }
+function getStoredUser() { try { return JSON.parse(localStorage.getItem('lng_user')); } catch(e) { return null; } }
+function setStoredUser(u) { localStorage.setItem('lng_user', JSON.stringify(u)); }
+
+async function fetchAPI(path, opts={}) {
+  const token = getToken();
+  const headers = {'Content-Type':'application/json', ...opts.headers};
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  const res = await fetch(`${API}${path}`, {...opts, headers});
+  if (res.status === 401) { clearToken(); window.location.reload(); throw new Error('Session expired'); }
   if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+async function loginAPI(username, password) {
+  const res = await fetch(`${API}/auth/login`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({username, password})
+  });
+  if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.detail || 'Login failed'); }
   return res.json();
 }
 
@@ -1514,9 +1547,98 @@ function FleetHullRanking() {
 }
 
 // ─── App Router ───
+function LoginPage({onLogin}) {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      const data = await loginAPI(username, password);
+      setToken(data.token);
+      setStoredUser(data.user);
+      onLogin(data.user);
+    } catch(err) { setError(err.message); }
+    setLoading(false);
+  };
+  return (
+    <div className="login-page">
+      <form className="login-box" onSubmit={handleSubmit}>
+        <h1>LNG Fleet</h1>
+        <div className="subtitle">Performance Management System</div>
+        <input type="text" placeholder="Username" value={username} onChange={e=>setUsername(e.target.value)} autoFocus />
+        <input type="password" placeholder="Password" value={password} onChange={e=>setPassword(e.target.value)} />
+        {error && <div className="error">{error}</div>}
+        <button type="submit" className="btn-login" disabled={loading}>{loading ? 'Signing in...' : 'Sign In'}</button>
+      </form>
+    </div>
+  );
+}
+
+function UserManagement() {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [newUser, setNewUser] = useState({username:'',email:'',password:'',role:'viewer'});
+  const [error, setError] = useState('');
+  const load = () => { fetchAPI('/auth/users').then(d => { setUsers(d.users); setLoading(false); }).catch(()=>setLoading(false)); };
+  useEffect(()=>{load();},[]);
+  const addUser = async (e) => {
+    e.preventDefault(); setError('');
+    try {
+      await fetchAPI('/auth/users', {method:'POST', body:JSON.stringify(newUser)});
+      setNewUser({username:'',email:'',password:'',role:'viewer'});
+      setShowForm(false); load();
+    } catch(err) { setError(err.message); }
+  };
+  const deleteUser = async (id) => {
+    if (!confirm('Delete this user?')) return;
+    try { await fetchAPI('/auth/users/'+id, {method:'DELETE'}); load(); } catch(err) { alert(err.message); }
+  };
+  if (loading) return <Loading/>;
+  return (
+    <div>
+      <div className="page-header"><h1>User Management</h1><p>Manage platform users (admin only)</p></div>
+      <div style={{marginBottom:16}}><button className="btn btn-primary" onClick={()=>setShowForm(!showForm)}>{showForm?'Cancel':'Add User'}</button></div>
+      {showForm && <div className="card" style={{marginBottom:16,maxWidth:500}}>
+        <h3>New User</h3>
+        <form onSubmit={addUser}>
+          <input placeholder="Username" value={newUser.username} onChange={e=>setNewUser({...newUser,username:e.target.value})} required style={{width:'100%',padding:'8px 12px',borderRadius:6,border:'1px solid #334155',background:'#0f172a',color:'#e2e8f0',fontSize:13,marginBottom:8}}/>
+          <input placeholder="Email" type="email" value={newUser.email} onChange={e=>setNewUser({...newUser,email:e.target.value})} required style={{width:'100%',padding:'8px 12px',borderRadius:6,border:'1px solid #334155',background:'#0f172a',color:'#e2e8f0',fontSize:13,marginBottom:8}}/>
+          <input placeholder="Password" type="password" value={newUser.password} onChange={e=>setNewUser({...newUser,password:e.target.value})} required style={{width:'100%',padding:'8px 12px',borderRadius:6,border:'1px solid #334155',background:'#0f172a',color:'#e2e8f0',fontSize:13,marginBottom:8}}/>
+          <select value={newUser.role} onChange={e=>setNewUser({...newUser,role:e.target.value})} style={{width:'100%',padding:'8px 12px',borderRadius:6,border:'1px solid #334155',background:'#0f172a',color:'#e2e8f0',fontSize:13,marginBottom:8}}>
+            <option value="viewer">Viewer (read-only)</option>
+            <option value="admin">Admin (full access)</option>
+          </select>
+          {error && <div style={{color:'#ef4444',fontSize:12,marginBottom:8}}>{error}</div>}
+          <button type="submit" className="btn btn-primary">Create User</button>
+        </form>
+      </div>}
+      <div className="card">
+        <table><thead><tr><th>Username</th><th>Email</th><th>Role</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead>
+        <tbody>{users.map(u => (
+          <tr key={u.user_id}>
+            <td style={{fontWeight:600}}>{u.username}</td><td>{u.email}</td>
+            <td><span className={`badge ${u.role==='admin'?'badge-info':'badge-success'}`}>{u.role}</span></td>
+            <td><span className={`badge ${u.is_active?'badge-success':'badge-danger'}`}>{u.is_active?'Active':'Disabled'}</span></td>
+            <td style={{fontSize:12,color:'var(--muted)'}}>{u.created_at}</td>
+            <td><button className="btn" style={{fontSize:11,padding:'4px 8px',color:'var(--danger)'}} onClick={()=>deleteUser(u.user_id)}>Delete</button></td>
+          </tr>
+        ))}</tbody></table>
+      </div>
+    </div>
+  );
+}
+
 function App() {
+  const [user, setUser] = useState(getStoredUser());
   const [page, setPage] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  if (!user) return <LoginPage onLogin={setUser}/>;
+  const logout = () => { clearToken(); setUser(null); setPage('dashboard'); };
   const nav = [
     {group:'Operations',items:[
       {id:'dashboard',label:'Dashboard'},
@@ -1555,7 +1677,8 @@ function App() {
       {id:'laytime',label:'Laytime'},
     ]},
   ];
-  const pages = {dashboard:Dashboard,vessels:Vessels,voyages:Voyages,hulloverview:HullOverview,speedpower:SpeedPower,trimanalysis:TrimAnalysis,fleethull:FleetHullRanking,cii:CIICompliance,eexi:EEXI,euets:EUEts,fueleu:FuelEU,eca:ECAEmissions,certificates:Certificates,seemp:SEEMP,digitaltwin:DigitalTwin,fleetanalytics:FleetAnalytics,voyagepnl:VoyagePnl,cpcompliance:CpCompliance,bunkercosts:BunkerCosts,bogimpact:BogImpact,offhiredisk:OffHireRisk,carboncost:CarbonCost,utilization:Utilization,voyagecompare:VoyageCompare,benchmark:Benchmark,laytime:Laytime};
+  if (user.role === 'admin') nav.push({group:'Admin',items:[{id:'usermgmt',label:'User Management'}]});
+  const pages = {dashboard:Dashboard,vessels:Vessels,voyages:Voyages,hulloverview:HullOverview,speedpower:SpeedPower,trimanalysis:TrimAnalysis,fleethull:FleetHullRanking,cii:CIICompliance,eexi:EEXI,euets:EUEts,fueleu:FuelEU,eca:ECAEmissions,certificates:Certificates,seemp:SEEMP,digitaltwin:DigitalTwin,fleetanalytics:FleetAnalytics,voyagepnl:VoyagePnl,cpcompliance:CpCompliance,bunkercosts:BunkerCosts,bogimpact:BogImpact,offhiredisk:OffHireRisk,carboncost:CarbonCost,utilization:Utilization,voyagecompare:VoyageCompare,benchmark:Benchmark,laytime:Laytime,usermgmt:UserManagement};
   const Page = pages[page] || Dashboard;
   return (
     <div className="app">
@@ -1568,6 +1691,10 @@ function App() {
           <div className="nav-group">{g.group}</div>
           {g.items.map(item => <div key={item.id} className={`nav-item ${page===item.id?'active':''}`} onClick={()=>{setPage(item.id);setSidebarOpen(false)}}>{item.label}</div>)}
         </div>)}
+        <div className="user-info">
+          Signed in as <strong>{user.username}</strong> <span className="role">{user.role}</span>
+        </div>
+        <button className="btn-logout" onClick={logout}>Sign Out</button>
       </nav>
       <main className="main"><Page key={page}/></main>
     </div>

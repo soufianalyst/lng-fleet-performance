@@ -1,8 +1,9 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from .deps import get_db, init_modules
+from .auth import router as auth_router, get_current_user, require_admin, seed_admin_user
 from ..database.schema import create_all_tables
 from . import vessels, voyages, voyage_opt, cargo, machinery, hull, compliance, eca, certificates, seemp, digital_twin, charter, reports, demo, map_data, fleet_analytics, charterer
 import os
@@ -21,23 +22,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(vessels.router, prefix="/api/vessels", tags=["Vessels"])
-app.include_router(voyages.router, prefix="/api/voyages", tags=["Voyages"])
-app.include_router(voyage_opt.router, prefix="/api/voyage-opt", tags=["Voyage Optimization"])
-app.include_router(cargo.router, prefix="/api/cargo", tags=["Cargo & BOR"])
-app.include_router(machinery.router, prefix="/api/machinery", tags=["Hull & Machinery"])
-app.include_router(hull.router, prefix="/api/hull", tags=["Hull Performance"])
-app.include_router(compliance.router, prefix="/api/compliance", tags=["CII & Regulatory"])
-app.include_router(eca.router, prefix="/api/eca", tags=["ECA & Emissions"])
-app.include_router(certificates.router, prefix="/api/certificates", tags=["Certificates"])
-app.include_router(seemp.router, prefix="/api/seemp", tags=["SEEMP Part III"])
-app.include_router(digital_twin.router, prefix="/api/digital-twin", tags=["Digital Twin"])
-app.include_router(charter.router, prefix="/api/charter", tags=["Charter Party"])
-app.include_router(reports.router, prefix="/api/reports", tags=["Reports"])
-app.include_router(demo.router, prefix="/api/demo", tags=["Demo Data"])
-app.include_router(map_data.router, prefix="/api/map", tags=["Fleet Map"])
-app.include_router(fleet_analytics.router, prefix="/api/analytics", tags=["Fleet Analytics"])
-app.include_router(charterer.router, prefix="/api/charterer", tags=["Charterer Analytics"])
+_auth = [Depends(get_current_user)]
+app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
+app.include_router(vessels.router, prefix="/api/vessels", tags=["Vessels"], dependencies=_auth)
+app.include_router(voyages.router, prefix="/api/voyages", tags=["Voyages"], dependencies=_auth)
+app.include_router(voyage_opt.router, prefix="/api/voyage-opt", tags=["Voyage Optimization"], dependencies=_auth)
+app.include_router(cargo.router, prefix="/api/cargo", tags=["Cargo & BOR"], dependencies=_auth)
+app.include_router(machinery.router, prefix="/api/machinery", tags=["Hull & Machinery"], dependencies=_auth)
+app.include_router(hull.router, prefix="/api/hull", tags=["Hull Performance"], dependencies=_auth)
+app.include_router(compliance.router, prefix="/api/compliance", tags=["CII & Regulatory"], dependencies=_auth)
+app.include_router(eca.router, prefix="/api/eca", tags=["ECA & Emissions"], dependencies=_auth)
+app.include_router(certificates.router, prefix="/api/certificates", tags=["Certificates"], dependencies=_auth)
+app.include_router(seemp.router, prefix="/api/seemp", tags=["SEEMP Part III"], dependencies=_auth)
+app.include_router(digital_twin.router, prefix="/api/digital-twin", tags=["Digital Twin"], dependencies=_auth)
+app.include_router(charter.router, prefix="/api/charter", tags=["Charter Party"], dependencies=_auth)
+app.include_router(reports.router, prefix="/api/reports", tags=["Reports"], dependencies=_auth)
+app.include_router(demo.router, prefix="/api/demo", tags=["Demo Data"], dependencies=_auth)
+app.include_router(map_data.router, prefix="/api/map", tags=["Fleet Map"], dependencies=_auth)
+app.include_router(fleet_analytics.router, prefix="/api/analytics", tags=["Fleet Analytics"], dependencies=_auth)
+app.include_router(charterer.router, prefix="/api/charterer", tags=["Charterer Analytics"], dependencies=_auth)
 
 
 @app.on_event("startup")
@@ -52,6 +55,9 @@ async def startup():
         from ..demo.seed_render import seed_if_empty
         seed_if_empty(db)
         log.info("Seed completed")
+
+        seed_admin_user(db)
+        log.info("Admin user ensured")
 
         init_modules()
         log.info("Database and modules initialized successfully")
@@ -87,7 +93,7 @@ async def health():
 
 
 @app.get("/api/dashboard")
-async def dashboard():
+async def dashboard(user=Depends(get_current_user)):
     db = get_db()
     vessels = db.fetchall("SELECT * FROM vessels")
     recent_voyages = db.fetchall(

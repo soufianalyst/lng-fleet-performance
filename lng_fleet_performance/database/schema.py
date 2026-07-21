@@ -800,6 +800,21 @@ CREATE TABLE IF NOT EXISTS eu_ets_surrender (
     created_at           TEXT DEFAULT (datetime('now')),
     UNIQUE(vessel_id, compliance_year)
 );
+
+-- ============================================================
+-- AUTHENTICATION
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS users (
+    user_id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    username             TEXT UNIQUE NOT NULL,
+    email                TEXT UNIQUE NOT NULL,
+    password_hash        TEXT NOT NULL,
+    role                 TEXT NOT NULL DEFAULT 'viewer' CHECK(role IN ('admin','viewer')),
+    is_active            INTEGER DEFAULT 1,
+    created_at           TEXT DEFAULT (datetime('now')),
+    updated_at           TEXT DEFAULT (datetime('now'))
+);
 """
 
 
@@ -1517,6 +1532,21 @@ CREATE TABLE IF NOT EXISTS eu_ets_surrender (
     status               TEXT DEFAULT 'pending',
     created_at           TEXT DEFAULT (NOW() AT TIME ZONE 'UTC')::text,
     UNIQUE(vessel_id, compliance_year)
+);
+
+-- ============================================================
+-- AUTHENTICATION
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS users (
+    user_id              SERIAL PRIMARY KEY,
+    username             TEXT UNIQUE NOT NULL,
+    email                TEXT UNIQUE NOT NULL,
+    password_hash        TEXT NOT NULL,
+    role                 TEXT NOT NULL DEFAULT 'viewer' CHECK(role IN ('admin','viewer')),
+    is_active            INTEGER DEFAULT 1,
+    created_at           TEXT DEFAULT (NOW() AT TIME ZONE 'UTC')::text,
+    updated_at           TEXT DEFAULT (NOW() AT TIME ZONE 'UTC')::text
 );
 """
 
