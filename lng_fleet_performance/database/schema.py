@@ -1555,13 +1555,10 @@ def create_all_tables(db_manager):
     if USING_POSTGRES:
         conn = db_manager._pg_conn
         cur = conn.cursor()
+        cur.execute(PG_SCHEMA_SQL)
         cur.execute("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public'")
         count = cur.fetchone()[0]
-        if count < 30:
-            cur.execute(PG_SCHEMA_SQL)
-            print("[schema] Created PostgreSQL tables")
-        else:
-            print(f"[schema] PostgreSQL already has {count} tables — skipping")
+        print(f"[schema] PostgreSQL verified — {count} tables")
     else:
         with db_manager.get_connection() as conn:
             cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
